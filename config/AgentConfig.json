@@ -1,0 +1,71 @@
+{
+  "name": "AgentGroup1",
+  "agents": [
+    {
+      "name": "Agent1",
+      "description": "Agent1",
+      "ifLeaf": true,
+      "ifService": false,
+      "ifKnowledgeable": true,
+      "ifLearnable": false,
+      "runtimeRevisionNumber": 1,
+      "historyNumber": 0,
+      "energy": 0,
+      "need_reflect": "True",
+      "role": "",
+      "prompts": [
+        {
+          "type": "inline",
+          "contents": [
+            "xxx",
+            "xxx"
+          ]
+        },
+        {
+          "type": "file",
+          "contents": [
+            "path1",
+            "path2"
+          ]
+        },
+        {
+          "type": "file",
+          "contents": [
+            "dir1"
+          ]
+        }
+      ],
+      "tools": [
+        {
+          "name": "VDB1",
+          "type": "VDB"
+        },
+        {
+          "name": "KG1",
+          "type": "KG"
+        },
+        {
+          "name": "RS1",
+          "type": "RS"
+        }
+      ],
+      "children": [
+        {
+          "name": "SubAgent1",
+          "description": "SubAgent1",
+          "ifLeaf": true,
+          "ifService": false,
+          "ifKnowledgeable": true,
+          "ifLearnable": false,
+          "runtimeRevisionNumber": 1,
+          "historyNumber": 0,
+          "energy": 0,
+          "need_reflect": "True",
+          "role": "",
+          "prompts": [
+          ]
+        }
+      ]
+    }
+  ]
+}
