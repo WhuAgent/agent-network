@@ -1,8 +1,11 @@
 {
+    "name": "",
+    "task": "",
     "groups": [
         {
             "name": "AgentGroup1",
             "description": "AgentGroup1",
+            "task": "",
             "ifService": false,
             "runtimeRevisionNumber": 1,
             "agentsRef": "AgentGroup1",

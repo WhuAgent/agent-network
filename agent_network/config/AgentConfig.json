@@ -1,9 +1,14 @@
 {
   "name": "AgentGroup1",
+  "task": "",
+  "loadType": "module",
+  "loadModule": "",
   "agents": [
     {
       "name": "Agent1",
+      "title": "Agent1",
       "description": "Agent1",
+      "task": "",
       "ifLeaf": true,
       "ifService": false,
       "ifKnowledgeable": true,
@@ -11,7 +16,6 @@
       "runtimeRevisionNumber": 1,
       "historyNumber": 0,
       "energy": 0,
-      "need_reflect": "True",
       "role": "",
       "prompts": [
         {
@@ -60,7 +64,6 @@
           "runtimeRevisionNumber": 1,
           "historyNumber": 0,
           "energy": 0,
-          "need_reflect": "True",
           "role": "",
           "prompts": [
           ]
