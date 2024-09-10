@@ -27,7 +27,7 @@ setup(
         'httpx==0.27.2',
         'idna==3.8',
         'jiter==0.5.0',
-        'numpy==2.1.1',
+        'numpy~=1.0',
         'openai==1.44.1',
         'pydantic==2.9.1',
         'pydantic_core==2.23.3',
