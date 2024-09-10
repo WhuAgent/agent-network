@@ -1,5 +1,5 @@
 import json
-from message.utils import chat_llm
+from agent_network.message.utils import chat_llm
 from datetime import datetime
 
 
