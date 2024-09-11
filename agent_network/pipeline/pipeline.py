@@ -55,7 +55,9 @@ class Pipeline:
                 agent_instance = agent_class(self.logger, agent_config.title, agent_config.task, agent_config.role,
                                              agent_config.description, agent_config.history_number,
                                              agent_config.prompts,
-                                             agent_config.tools, agent_config.runtime_revision_number)
+                                             agent_config.tools, agent_config.runtime_revision_number,
+                                             agent_config.init_extra_params
+                                             )
                 agent_children = None
                 if agent_config.if_leaf and agent_config.children and len(agent_config.children) > 0:
                     agent_children = [self.design_agent_group(child) for child in agent_config.children]

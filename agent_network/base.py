@@ -8,8 +8,9 @@ from agent_network.pipeline.node import Executable
 class BaseAgent(Executable):
 
     def __init__(self, logger, title, task, role, description, history_number, prompts, tools,
-                 runtime_revision_number):
+                 runtime_revision_number, init_extra_params):
         super().__init__(title, task)
+        self.init_extra_params = init_extra_params
         self.task = task
         self.title = title
         self.role = role
