@@ -3,6 +3,7 @@ from agent_network.message.utils import chat_llm
 from datetime import datetime
 import yaml
 from agent_network.pipeline.node import Executable
+from abc import abstractmethod
 
 
 class BaseAgent(Executable):
@@ -69,7 +70,9 @@ class BaseAgent(Executable):
 
     def agent_base(self, current_task=None):
         begin_t = datetime.now()
+        self.pre_agent()
         result = self.agent(self.runtime_revision_number, current_task)
+        self.post_agent()
         end_t = datetime.now()
         self.cost_history.append(f"需求: {self.task if not current_task else current_task + '父需求:' + self.task}, 花费时间: {str(end_t - begin_t)}")
         if not current_task:
@@ -84,6 +87,14 @@ class BaseAgent(Executable):
             self.log(f"需求: {self.task}, 花费token: {usage_total_map}")
         return result
 
+    @abstractmethod
+    def post_agent(self):
+        pass
+
+    @abstractmethod
+    def pre_agent(self):
+        pass
+
     def agent(self, runtime_revision_number, current_task=None):
         if not current_task:
             self.log(f"task: {self.task}")
@@ -93,9 +104,12 @@ class BaseAgent(Executable):
             messages = self.initial_prompts(current_task)
         self.log_messages(messages)
         content, result, sub_task_list = self.design(messages)
-        if sub_task_list and len(sub_task_list) > 0 and runtime_revision_number > 0:
-            for sub_task in sub_task_list:
-                result = self.agent(runtime_revision_number - 1, sub_task)
+        if sub_task_list and len(sub_task_list) > 0:
+            if runtime_revision_number > 0:
+                for sub_task in sub_task_list:
+                    result = self.agent(runtime_revision_number - 1, sub_task)
+            else:
+                raise Exception("reach max runtime revision number, task failed")
         return result
 
     def execute(self, response_content):
