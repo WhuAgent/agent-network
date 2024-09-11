@@ -15,7 +15,7 @@ class Pipeline:
         configs = []
         for root, dirs, files in os.walk(self.config_dir):
             for dir in dirs:
-                if dir.endWith("Agent"):
+                if dir.endswith("Agent"):
                     agent_group_config = {}
                     groups_config = {}
                     agent_dir_path = os.path.join(root, dir)
