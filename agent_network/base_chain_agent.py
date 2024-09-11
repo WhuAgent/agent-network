@@ -18,8 +18,8 @@ class BaseCandidateAgent(BaseAgent):
         if not current_task:
             raise Exception("评分Agent的当前任务不能为空")
         candidate_results = []
-        for chain in self.candidates:
-            result = chain.agent(current_task)
+        for candidate in self.candidates:
+            result = candidate.agent(current_task)
             candidate_results.append(result)
         score_list = self.agent_score(candidate_results)
         return [candidate_results[score_index] for score_index in score_list[:self.score_max_count]]

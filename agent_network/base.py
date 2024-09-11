@@ -24,7 +24,6 @@ class BaseAgent(Executable):
         self.runtime_revision_number = runtime_revision_number
         self.cost_history = []
         self.usages = []
-        self.context = {**kwargs}
 
     def initial_messages(self, current_task):
         messages = []
@@ -113,11 +112,3 @@ class BaseAgent(Executable):
         for message in messages:
             self.log(message["role"])
             self.log(message["content"])
-
-    def register(self, key, value):
-        self.context[key] = value
-
-    def retrieve(self, key):
-        if key not in self.context:
-            raise Exception(f"context do not contain key: {key}")
-        return self.context[key]
