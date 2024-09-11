@@ -1,7 +1,7 @@
 import importlib
 import json
-from config.config_loader import agent_decoder, group_decoder
-from node import Node, GroupNode, TaskNode
+from agent_network.pipeline.config.config_loader import agent_decoder, group_decoder
+from agent_network.pipeline.node import Node, GroupNode, TaskNode
 import os
 
 
