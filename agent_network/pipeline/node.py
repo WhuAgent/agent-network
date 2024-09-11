@@ -34,12 +34,12 @@ class Node(Executable):
     def execute(self, input_content):
         # an agent chain runs sequentially with sharing context
         if isinstance(self.executable, BaseAgent):
-            result = self.executable.agent(self.executable.runtime_revision_number, input_content)
+            result = self.executable.agent_base(input_content)
             if self.nextExecutables:
                 for nextExecutable in self.nextExecutables:
                     nextExecutable.shared_context(self.context)
                     if isinstance(nextExecutable, BaseAgent):
-                        nextExecutable.agent(nextExecutable.runtime_revision_number, result)
+                        nextExecutable.agent_base(result)
                     else:
                         nextExecutable.execute(result)
         else:
