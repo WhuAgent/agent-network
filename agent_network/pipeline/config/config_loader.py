@@ -29,7 +29,8 @@ class AgentConfig:
     def __init__(self, name: str, title: str, description: str, task: str, role: str, if_leaf: bool,
                  prompts: [PromptsConfig], tools: [ToolsConfig] = None, children: [AgentConfig] = None,
                  if_knowledgeable: bool = False, if_learnable: bool = False, if_service: bool = False,
-                 runtime_revision_number: int = 0, history_number: int = 0, energy: int = 0):
+                 runtime_revision_number: int = 0, history_number: int = 0, energy: int = 0,
+                 init_extra_params: dict = {}):
         self.name = name
         self.title = title
         self.description = description
@@ -45,12 +46,14 @@ class AgentConfig:
         self.prompts = prompts
         self.tools = tools
         self.children = children
+        self.init_extra_params = init_extra_params
 
 
 def agent_decoder(obj: dict):
     if 'description' in obj and 'title' in obj and 'name' in obj and 'ifLeaf' in obj and 'role' in obj \
             and 'prompts' in obj and 'task' in obj:
-        return AgentConfig(obj['name'], obj['title'], obj['description'], obj['task'], obj['role'], obj['ifLeaf'], obj['prompts'],
+        return AgentConfig(obj['name'], obj['title'], obj['description'], obj['task'], obj['role'], obj['ifLeaf'],
+                           obj['prompts'],
                            obj['tools'] if 'tools' in obj else None,
                            obj['children'] if 'children' in obj else None,
                            obj['ifKnowledgeable'] if 'ifKnowledgeable' in obj else None,
@@ -59,6 +62,7 @@ def agent_decoder(obj: dict):
                            obj['runtimeRevisionNumber'] if 'runtimeRevisionNumber' in obj else None,
                            obj['historyNumber'] if 'historyNumber' in obj else None,
                            obj['energy'] if 'energy' in obj else None,
+                           obj['initExtraParams'] if 'initExtraParams' in obj else None,
                            )
     raise Exception(f'agent config illegal: {obj}')
 
@@ -87,7 +91,8 @@ class GroupConfig:
 def group_decoder(obj: dict):
     if 'description' in obj and 'name' in obj and 'ifLeaf' in obj and 'agentsRef' in obj \
             and 'prompts' in obj and 'task' in obj:
-        return GroupConfig(obj['name'], obj['description'], obj['task'], obj['ifLeaf'], obj['agentsRef'], obj['prompts'],
+        return GroupConfig(obj['name'], obj['description'], obj['task'], obj['ifLeaf'], obj['agentsRef'],
+                           obj['prompts'],
                            obj['tools'] if 'tools' in obj else None,
                            obj['children'] if 'children' in obj else None,
                            obj['ifKnowledgeable'] if 'ifKnowledgeable' in obj else None,
