@@ -4,11 +4,9 @@ import context
 
 
 class Executable:
-    def __init__(self, name, task, **kwargs):
+    def __init__(self, name, task):
         self.name = name
         self.task = task
-        for key, value in kwargs.items():
-            context.register(key, value)
 
     @abstractmethod
     def execute(self, input_content):
