@@ -8,14 +8,6 @@ class Executable:
         self.task = task
         self.context = {**kwargs}
 
-    def post_init_inner(self, context):
-        self.shared_context(context)
-        self.post_init(context)
-
-    @abstractmethod
-    def post_init(self, context):
-        pass
-
     @abstractmethod
     def execute(self, input_content):
         pass
