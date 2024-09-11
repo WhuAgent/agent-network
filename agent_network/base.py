@@ -10,7 +10,7 @@ class BaseAgent(Executable):
 
     def __init__(self, logger, title, task, role, description, history_number, prompts, tools,
                  runtime_revision_number, **kwargs):
-        super().__init__(title, task, **kwargs)
+        super().__init__(title, task)
         self.task = task
         self.title = title
         self.role = role
