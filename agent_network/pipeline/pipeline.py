@@ -1,7 +1,7 @@
 import importlib
 import json
-from config.config_loader import agent_decoder, group_decoder
-from node import Node, GroupNode, TaskNode
+from agent_network.pipeline.config.config_loader import agent_decoder, group_decoder
+from agent_network.pipeline.node import Node, GroupNode, TaskNode
 import os
 
 
@@ -15,7 +15,7 @@ class Pipeline:
         configs = []
         for root, dirs, files in os.walk(self.config_dir):
             for dir in dirs:
-                if dir.endWith("Agent"):
+                if dir.endswith("Agent"):
                     agent_group_config = {}
                     groups_config = {}
                     agent_dir_path = os.path.join(root, dir)
