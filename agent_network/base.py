@@ -43,7 +43,8 @@ class BaseAgent(Executable):
                 inline_messages = []
                 for content in prompt.contents:
                     prompt_content = json.load(content)
-                    inline_messages.append({"role": prompt_content["role"], "content": prompt_content["content"]})
+                    inline_messages.append({"role": prompt_content["role"],
+                                            "content": prompt_content["content"].replace("{task}", current_task)})
                 prompt_messages.extend(inline_messages)
             messages.extend(prompt_messages)
         return messages
@@ -74,11 +75,14 @@ class BaseAgent(Executable):
         result = self.agent(self.runtime_revision_number, current_task)
         self.post_agent()
         end_t = datetime.now()
-        self.cost_history.append(f"需求: {self.task if not current_task else current_task + '父需求:' + self.task}, 花费时间: {str(end_t - begin_t)}")
+        self.cost_history.append(
+            f"需求: {self.task if not current_task else current_task + '父需求:' + self.task}, 花费时间: {str(end_t - begin_t)}")
         if not current_task:
             self.log(self.cost_history)
             self.log(f"总花费时间: {end_t - begin_t}")
-            self.log([f"'completion_tokens': {usage.completion_tokens}, 'prompt_tokens': {usage.prompt_tokens}, 'total_tokens': {usage.total_tokens}" for usage in self.usages])
+            self.log([
+                         f"'completion_tokens': {usage.completion_tokens}, 'prompt_tokens': {usage.prompt_tokens}, 'total_tokens': {usage.total_tokens}"
+                         for usage in self.usages])
             usage_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
             for usage in self.usages:
                 usage_total_map["completion_tokens"] += usage.completion_tokens
@@ -87,11 +91,9 @@ class BaseAgent(Executable):
             self.log(f"需求: {self.task}, 花费token: {usage_total_map}")
         return result
 
-    @abstractmethod
     def post_agent(self):
         pass
 
-    @abstractmethod
     def pre_agent(self):
         pass
 
@@ -112,6 +114,7 @@ class BaseAgent(Executable):
                 raise Exception("reach max runtime revision number, task failed")
         return result
 
+    @abstractmethod
     def execute(self, response_content):
         print(f'response_content: {response_content}')
         return None, []

@@ -1,83 +1,67 @@
 from abc import abstractmethod
 from agent_network.base import BaseAgent
+import context
 
 
 class Executable:
     def __init__(self, name, task, **kwargs):
         self.name = name
         self.task = task
-        self.context = {**kwargs}
+        for key, value in kwargs.items():
+            context.register(key, value)
 
     @abstractmethod
     def execute(self, input_content):
         pass
 
-    def register(self, key, value):
-        self.context[key] = value
-
-    def retrieve(self, key):
-        if key not in self.context:
-            raise Exception(f"context do not contain key: {key}")
-        return self.context[key]
-
-    def shared_context(self, context):
-        self.context = {**self.context, **context}
-
 
 class Node(Executable):
-    def __init__(self, executable: Executable, nextExecutables: [Executable]):
+    def __init__(self, executable: Executable, next_executables: [Executable]):
         super().__init__(executable.name, executable.task)
         self.name = executable.name
         self.executable = executable
-        self.nextExecutables = nextExecutables
+        self.next_executables = next_executables
 
     def execute(self, input_content):
         # an agent chain runs sequentially with sharing context
         if isinstance(self.executable, BaseAgent):
             result = self.executable.agent_base(input_content)
-            if self.nextExecutables:
-                for nextExecutable in self.nextExecutables:
-                    nextExecutable.shared_context(self.context)
-                    if isinstance(nextExecutable, BaseAgent):
-                        nextExecutable.agent_base(result)
+            if self.next_executables:
+                for next_executable in self.next_executables:
+                    if isinstance(next_executable, BaseAgent):
+                        next_executable.agent_base(result)
                     else:
-                        nextExecutable.execute(result)
+                        next_executable.execute(result)
         else:
             result = self.executable.execute(input_content)
-            if self.nextExecutables:
-                for nextExecutable in self.nextExecutables:
-                    nextExecutable.shared_context(self.context)
-                    nextExecutable.execute(result)
-
-    def post_init(self, context):
-        pass
+            if self.next_executables:
+                for next_executable in self.next_executables:
+                    next_executable.execute(result)
 
 
 class GroupNode(Node):
-    def __init__(self, nextExecutables: [Executable], group_name, group_task):
-        super().__init__(Executable("GroupNode", "GroupNode"), nextExecutables)
+    def __init__(self, next_executables: [Executable], group_name, group_task):
+        super().__init__(Executable("GroupNode", "GroupNode"), next_executables)
         self.group_name = group_name
         self.group_task = group_task
 
     def execute(self, input_content):
         # todo agents run parallel with a group
-        if not self.nextExecutables or len(self.nextExecutables) == 0:
+        if not self.next_executables or len(self.next_executables) == 0:
             raise Exception("GroupNode do not have executables")
-        for nextExecutable in self.nextExecutables:
-            nextExecutable.shared_context(self.context)
-            nextExecutable.execute(input_content)
+        for next_executable in self.next_executables:
+            next_executable.execute(input_content)
 
 
 class TaskNode(Node):
-    def __init__(self, nextExecutables: [Executable], name, task):
-        super().__init__(Executable("TaskNode", "TaskNode"), nextExecutables)
+    def __init__(self, next_executables: [Executable], name, task):
+        super().__init__(Executable("TaskNode", "TaskNode"), next_executables)
         self.name = name
         self.task = task
 
     def execute(self, input_content):
         # todo groups run parallel with a task
-        if not self.nextExecutables or len(self.nextExecutables) == 0:
+        if not self.next_executables or len(self.next_executables) == 0:
             raise Exception("TaskNode do not have executables")
-        for nextExecutable in self.nextExecutables:
-            nextExecutable.shared_context(self.context)
-            nextExecutable.execute(input_content)
+        for next_executable in self.next_executables:
+            next_executable.execute(input_content)
