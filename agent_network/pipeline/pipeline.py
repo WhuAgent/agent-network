@@ -56,7 +56,7 @@ class Pipeline:
                                              agent_config.description, agent_config.history_number,
                                              agent_config.prompts,
                                              agent_config.tools, agent_config.runtime_revision_number,
-                                             agent_config.init_extra_params
+                                             **agent_config.init_extra_params
                                              )
                 agent_children = None
                 if agent_config.if_leaf and agent_config.children and len(agent_config.children) > 0:

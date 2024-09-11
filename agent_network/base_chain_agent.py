@@ -6,7 +6,7 @@ class BaseCandidateAgent(BaseAgent):
     def __init__(self, logger, title, task, role, description, history_number, prompts, tools,
                  runtime_revision_number, candidate_agent: [BaseAgent], score_max_count):
         super().__init__(logger, title, task, role, description, history_number, prompts, tools,
-                         runtime_revision_number, {})
+                         runtime_revision_number)
         self.candidates = [candidate_agent]
         self.score_agent = ScoreAgent(logger, title, task, role, description, history_number)
         self.score_max_count = score_max_count
