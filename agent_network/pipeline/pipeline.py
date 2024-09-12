@@ -94,6 +94,6 @@ class Pipeline:
                         candidate_group_nodes[group.name] = []
                         candidate_group_nodes[group.name].append(candidate_nodes[group.agents_ref])
             candidate_task_nodes.append(
-                TaskNode(candidate_group_nodes.values(), groups_config["name"], groups_config["task"]))
+                TaskNode(list(candidate_group_nodes.values()), groups_config["name"], groups_config["task"]))
         for candidate_task_node in candidate_task_nodes:
             candidate_task_node.execute(current_task)
