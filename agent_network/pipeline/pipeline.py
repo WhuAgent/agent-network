@@ -87,12 +87,12 @@ class Pipeline:
             candidate_nodes[agents_config["name"]] = GroupNode(nodes, agents_config["name"], agents_config["task"])
         groups_configs = [config["group_config"] for config in configs]
         for groups_config in groups_configs:
-            candidate_group_nodes: dict[str, [Node]] = {}
+            candidate_group_nodes: dict[str, Node] = {}
             for group in groups_config["groups"]:
                 if group.agents_ref in candidate_nodes:
-                    if group.name not in candidate_group_nodes:
-                        candidate_group_nodes[group.name] = []
-                        candidate_group_nodes[group.name].append(candidate_nodes[group.agents_ref])
+                    candidate_group_nodes[group.name] = candidate_nodes[group.agents_ref]
+                else:
+                    raise Exception(f"group: {group.agents_ref} do not exist")
             candidate_task_nodes.append(
                 TaskNode([value for key, value in candidate_group_nodes.items()], groups_config["name"], groups_config["task"]))
         for candidate_task_node in candidate_task_nodes:
