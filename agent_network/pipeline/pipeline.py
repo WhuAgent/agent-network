@@ -65,7 +65,7 @@ class Pipeline:
                 nodes.append(agent_node)
         return nodes
 
-    def agent(self):
+    def agent(self, current_task):
         configs = self.load()
         agents_configs = [config["agent_config"] for config in configs]
         candidate_nodes: dict[str, Node] = {}
@@ -83,4 +83,4 @@ class Pipeline:
                         candidate_group_nodes[group["name"]].append(candidate_task_nodes[group["agentsRef"]])
             candidate_task_nodes.append(TaskNode(candidate_group_nodes.values(), groups_config["name"], groups_config["task"]))
         for candidate_task_node in candidate_task_nodes:
-            candidate_task_node.execute(candidate_task_node.task)
+            candidate_task_node.execute(current_task)
