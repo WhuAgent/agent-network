@@ -8,11 +8,12 @@ from abc import abstractmethod
 
 class BaseAgent(Executable):
 
-    def __init__(self, logger, title, task, role, description, history_number, prompts, tools,
+    def __init__(self, logger, name, title, task, role, description, history_number, prompts, tools,
                  runtime_revision_number, **kwargs):
-        super().__init__(title, task)
+        super().__init__(name, task)
         self.task = task
         self.title = title
+        self.name = name
         self.role = role
         self.description = description
         self.prompts = prompts

@@ -62,14 +62,14 @@ class Pipeline:
     def design_module_agent(self, loaded_module, agent_config: AgentConfig) -> Node:
         agent_class = getattr(loaded_module, agent_config.name)
         if agent_config.init_extra_params:
-            agent_instance = agent_class(self.logger, agent_config.title, agent_config.task, agent_config.role,
+            agent_instance = agent_class(self.logger, agent_config.name, agent_config.title, agent_config.task, agent_config.role,
                                          agent_config.description, agent_config.history_number,
                                          agent_config.prompts,
                                          agent_config.tools, agent_config.runtime_revision_number,
                                          **agent_config.init_extra_params
                                          )
         else:
-            agent_instance = agent_class(self.logger, agent_config.title, agent_config.task, agent_config.role,
+            agent_instance = agent_class(self.logger, agent_config.name, agent_config.title, agent_config.task, agent_config.role,
                                          agent_config.description, agent_config.history_number,
                                          agent_config.prompts,
                                          agent_config.tools, agent_config.runtime_revision_number

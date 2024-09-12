@@ -3,12 +3,12 @@ from utils_agent import ScoreAgent
 
 
 class BaseCandidateAgent(BaseAgent):
-    def __init__(self, logger, title, task, role, description, history_number, prompts, tools,
+    def __init__(self, logger, name, title, task, role, description, history_number, prompts, tools,
                  runtime_revision_number, candidate_agent: [BaseAgent], score_max_count):
-        super().__init__(logger, title, task, role, description, history_number, prompts, tools,
+        super().__init__(logger, name, title, task, role, description, history_number, prompts, tools,
                          runtime_revision_number)
         self.candidates = [candidate_agent]
-        self.score_agent = ScoreAgent(logger, title, task, role, description, history_number)
+        self.score_agent = ScoreAgent(logger, name, title, task, role, description, history_number)
         self.score_max_count = score_max_count
 
     def agent_score(self, sub_results):
@@ -23,3 +23,7 @@ class BaseCandidateAgent(BaseAgent):
             candidate_results.append(result)
         score_list = self.agent_score(candidate_results)
         return [candidate_results[score_index] for score_index in score_list[:self.score_max_count]]
+
+    def execute(self, response_content):
+        print(f'response_content: {response_content}')
+        return None, []
