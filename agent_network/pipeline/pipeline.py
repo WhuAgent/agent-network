@@ -89,10 +89,10 @@ class Pipeline:
         for groups_config in groups_configs:
             candidate_group_nodes: dict[str, [Node]] = {}
             for group in groups_config["groups"]:
-                if group["agentsRef"] in candidate_task_nodes:
+                if group["agentsRef"] in candidate_nodes:
                     if group["name"] not in candidate_group_nodes:
                         candidate_group_nodes[group["name"]] = []
-                        candidate_group_nodes[group["name"]].append(candidate_task_nodes[group["agentsRef"]])
+                        candidate_group_nodes[group["name"]].append(candidate_nodes[group["agentsRef"]])
             candidate_task_nodes.append(
                 TaskNode(candidate_group_nodes.values(), groups_config["name"], groups_config["task"]))
         for candidate_task_node in candidate_task_nodes:
