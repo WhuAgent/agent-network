@@ -52,7 +52,7 @@ class BaseAgent(Executable):
     def initial_prompts(self, current_task):
         messages = []
         if self.append_history_num > 0:
-            for i in range(self.append_history_num):
+            for i in range(min(self.append_history_num, len(self.history_action))):
                 messages.append({"role": "system", "content": f"第{i + 1}条历史记录:\n"})
                 history_action = self.history_action[len(self.history_action) - self.append_history_num + i]
                 messages.append({"role": history_action["role"], "content": history_action['content']})
