@@ -1,6 +1,26 @@
 import threading
 
 thread_local_data = threading.local()
+global_map = {}
+
+
+def register_global(key, value):
+    global_map[key] = value
+
+
+def retrieve_global(key):
+    if key in global_map:
+        return global_map.get(key)
+    else:
+        raise Exception(f"global context do not contain key: {key}")
+
+
+def retrieve_global_all():
+    return global_map
+
+
+def release_global():
+    global_map.clear()
 
 
 def register(key, value):

@@ -3,6 +3,8 @@ import json
 from agent_network.pipeline.config.config_loader import agent_decoder, group_decoder, AgentConfig
 from agent_network.pipeline.node import Node, GroupNode, TaskNode
 import os
+import threading
+import agent_network.pipeline.context as ctx
 
 
 class Pipeline:
@@ -94,6 +96,21 @@ class Pipeline:
                 else:
                     raise Exception(f"group: {group.agents_ref} do not exist")
             candidate_task_nodes.append(
-                TaskNode([value for key, value in candidate_group_nodes.items()], groups_config["name"], groups_config["task"]))
+                TaskNode([value for key, value in candidate_group_nodes.items()], groups_config["name"],
+                         groups_config["task"]))
+        task_threads = []
         for candidate_task_node in candidate_task_nodes:
-            candidate_task_node.execute(current_task)
+            task_thread = threading.Thread(
+                target=lambda ct=current_task, ctn=candidate_task_node: ctn.execute(ct)
+            )
+            task_threads.append(task_thread)
+            task_thread.start()
+        for thread in task_threads:
+            thread.join()
+
+    def retreive_result(self, key):
+        return ctx.retrieve_global(key)
+
+    def release(self):
+        ctx.release()
+        ctx.release_global()

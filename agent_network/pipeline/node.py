@@ -1,5 +1,7 @@
 from agent_network.pipeline.executable import Executable
+import agent_network.pipeline.context as ctx
 from agent_network.base import BaseAgent
+import threading
 
 
 class Node(Executable):
@@ -19,6 +21,8 @@ class Node(Executable):
                         next_executable.agent_base(result)
                     else:
                         next_executable.execute(result)
+            else:
+                ctx.register_global(self.executable.name, result)
         else:
             result = self.executable.execute(input_content)
             if self.next_executables:
@@ -33,11 +37,17 @@ class GroupNode(Node):
         self.group_task = group_task
 
     def execute(self, input_content):
-        # todo agents run parallel with a group
         if not self.next_executables or len(self.next_executables) == 0:
             raise Exception("GroupNode do not have executables")
+        group_threads = []
         for next_executable in self.next_executables:
-            next_executable.execute(input_content)
+            group_thread = threading.Thread(
+                target=lambda ne=next_executable, ic=input_content: ne.execute(ic)
+            )
+            group_threads.append(group_thread)
+            group_thread.start()
+        for group_thread in group_threads:
+            group_thread.join()
 
 
 class TaskNode(Node):
@@ -47,8 +57,16 @@ class TaskNode(Node):
         self.task = task
 
     def execute(self, input_content):
-        # todo groups run parallel with a task
         if not self.next_executables or len(self.next_executables) == 0:
             raise Exception("TaskNode do not have executables")
         for next_executable in self.next_executables:
             next_executable.execute(input_content)
+        task_threads = []
+        for next_executable in self.next_executables:
+            task_thread = threading.Thread(
+                target=lambda ne=next_executable, ic=input_content: ne.execute(ic)
+            )
+            task_threads.append(task_thread)
+            task_thread.start()
+        for task_thread in task_threads:
+            task_thread.join()
