@@ -2,7 +2,7 @@ import json
 from agent_network.message.utils import chat_llm
 from datetime import datetime
 import yaml
-from agent_network.pipeline.node import Executable
+from agent_network.pipeline.executable import Executable
 from abc import abstractmethod
 
 
