@@ -35,12 +35,14 @@ class Pipeline:
                                     else:
                                         raise Exception(f'loadModule do not exist with config: {agent_configs_dict}')
                                 agent_configs = agent_configs_dict['agents']
-                                agent_group_config['agents'] = [agent_decoder(agent_config) for agent_config in agent_configs]
+                                agent_group_config['agents'] = [agent_decoder(agent_config) for agent_config in
+                                                                agent_configs]
                         if "GroupConfig.json" == file:
                             with open(os.path.join(agent_dir_path, file), "r",
                                       encoding="utf-8") as gp:
                                 group_configs_dict = json.load(gp)
-                                groups_config['groups'] = [group_decoder(group_config) for group_config in group_configs_dict['groups']]
+                                groups_config['groups'] = [group_decoder(group_config) for group_config in
+                                                           group_configs_dict['groups']]
                                 groups_config['name'] = group_configs_dict['name']
                                 groups_config['task'] = group_configs_dict['task']
                     configs.append({"agent_config": agent_group_config, "group_config": groups_config})
@@ -57,12 +59,19 @@ class Pipeline:
 
     def design_module_agent(self, loaded_module, agent_config: AgentConfig) -> Node:
         agent_class = getattr(loaded_module, agent_config.name)
-        agent_instance = agent_class(self.logger, agent_config.title, agent_config.task, agent_config.role,
-                                     agent_config.description, agent_config.history_number,
-                                     agent_config.prompts,
-                                     agent_config.tools, agent_config.runtime_revision_number,
-                                     agent_config.init_extra_params if agent_config.init_extra_params else None
-                                     )
+        if agent_config.init_extra_params:
+            agent_instance = agent_class(self.logger, agent_config.title, agent_config.task, agent_config.role,
+                                         agent_config.description, agent_config.history_number,
+                                         agent_config.prompts,
+                                         agent_config.tools, agent_config.runtime_revision_number,
+                                         **agent_config.init_extra_params
+                                         )
+        else:
+            agent_instance = agent_class(self.logger, agent_config.title, agent_config.task, agent_config.role,
+                                         agent_config.description, agent_config.history_number,
+                                         agent_config.prompts,
+                                         agent_config.tools, agent_config.runtime_revision_number
+                                         )
         agent_children = None
         if not agent_config.if_leaf and agent_config.children and len(agent_config.children) > 0:
             agent_children = [self.design_module_agent(loaded_module, child) for child in agent_config.children]
@@ -84,6 +93,7 @@ class Pipeline:
                     if group["name"] not in candidate_group_nodes:
                         candidate_group_nodes[group["name"]] = []
                         candidate_group_nodes[group["name"]].append(candidate_task_nodes[group["agentsRef"]])
-            candidate_task_nodes.append(TaskNode(candidate_group_nodes.values(), groups_config["name"], groups_config["task"]))
+            candidate_task_nodes.append(
+                TaskNode(candidate_group_nodes.values(), groups_config["name"], groups_config["task"]))
         for candidate_task_node in candidate_task_nodes:
             candidate_task_node.execute(current_task)
