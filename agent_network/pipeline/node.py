@@ -1,4 +1,4 @@
-from executable import Executable
+from agent_network.pipeline.executable import Executable
 from agent_network.base import BaseAgent
 
 
