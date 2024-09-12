@@ -55,7 +55,8 @@ def agent_decoder(obj: dict):
         return AgentConfig(obj['name'], obj['title'], obj['description'], obj['task'], obj['role'], obj['ifLeaf'],
                            obj['prompts'],
                            obj['tools'] if 'tools' in obj else None,
-                           obj['children'] if 'children' in obj else None,
+                           [agent_decoder(child) for child in obj['children']] if 'children' in obj and len(
+                               obj['children']) > 0 else None,
                            obj['ifKnowledgeable'] if 'ifKnowledgeable' in obj else None,
                            obj['ifLearnable'] if 'ifLearnable' in obj else None,
                            obj['ifService'] if 'ifService' in obj else None,
@@ -94,7 +95,8 @@ def group_decoder(obj: dict):
         return GroupConfig(obj['name'], obj['description'], obj['task'], obj['ifLeaf'], obj['agentsRef'],
                            obj['prompts'],
                            obj['tools'] if 'tools' in obj else None,
-                           obj['children'] if 'children' in obj else None,
+                           [group_decoder(child) for child in obj['children']] if 'children' in obj and len(
+                               obj['children']) > 0 else None,
                            obj['ifKnowledgeable'] if 'ifKnowledgeable' in obj else None,
                            obj['ifLearnable'] if 'ifLearnable' in obj else None,
                            obj['ifService'] if 'ifService' in obj else None,
