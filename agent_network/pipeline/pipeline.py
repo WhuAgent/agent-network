@@ -1,6 +1,6 @@
 import importlib
 import json
-from agent_network.pipeline.config.config_loader import agent_decoder, group_decoder
+from agent_network.pipeline.config.config_loader import agent_decoder, group_decoder, AgentConfig
 from agent_network.pipeline.node import Node, GroupNode, TaskNode
 import os
 
@@ -51,19 +51,22 @@ class Pipeline:
         if agent_group_config['loadType'] == 'module':
             load_module = importlib.import_module(agent_group_config['loadModule'])
             for agent_config in agent_group_config['agents']:
-                agent_class = getattr(load_module, agent_config.name)
-                agent_instance = agent_class(self.logger, agent_config.title, agent_config.task, agent_config.role,
-                                             agent_config.description, agent_config.history_number,
-                                             agent_config.prompts,
-                                             agent_config.tools, agent_config.runtime_revision_number,
-                                             **agent_config.init_extra_params
-                                             )
-                agent_children = None
-                if agent_config.if_leaf and agent_config.children and len(agent_config.children) > 0:
-                    agent_children = [self.design_agent_group(child) for child in agent_config.children]
-                agent_node = Node(agent_instance, agent_children)
+                agent_node = self.design_module_agent(load_module, agent_config)
                 nodes.append(agent_node)
         return nodes
+
+    def design_module_agent(self, loaded_module, agent_config: AgentConfig) -> Node:
+        agent_class = getattr(loaded_module, agent_config.name)
+        agent_instance = agent_class(self.logger, agent_config.title, agent_config.task, agent_config.role,
+                                     agent_config.description, agent_config.history_number,
+                                     agent_config.prompts,
+                                     agent_config.tools, agent_config.runtime_revision_number,
+                                     **agent_config.init_extra_params
+                                     )
+        agent_children = None
+        if not agent_config.if_leaf and agent_config.children and len(agent_config.children) > 0:
+            agent_children = [self.design_module_agent(loaded_module, child) for child in agent_config.children]
+        return Node(agent_instance, agent_children)
 
     def agent(self, current_task):
         configs = self.load()
