@@ -17,9 +17,8 @@
       "historyNumber": 0,
       "energy": 0,
       "role": "",
-      "initExtraParams": [
-
-      ],
+      "initExtraParams": {
+      },
       "prompts": [
         {
           "type": "inline",
