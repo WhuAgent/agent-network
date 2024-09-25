@@ -10,7 +10,7 @@ class BaseAgent(Executable):
 
     def __init__(self, logger, name, title, task, role, description, history_number, prompts, tools,
                  runtime_revision_number, **kwargs):
-        super().__init__(name, task)
+        super().__init__(name, task, {}, {})
         self.task = task
         self.title = title
         self.name = name
@@ -27,7 +27,7 @@ class BaseAgent(Executable):
         self.cost_history = []
         self.usages = []
 
-    def initial_messages(self, current_task):
+    def initial_messages(self, current_task, **kwargs):
         messages = []
         for prompt in self.prompts:
             prompt_messages = []
@@ -50,31 +50,31 @@ class BaseAgent(Executable):
             messages.extend(prompt_messages)
         return messages
 
-    def initial_prompts(self, current_task):
+    def initial_prompts(self, current_task, **kwargs):
         messages = []
         if self.append_history_num > 0:
             for i in range(min(self.append_history_num, len(self.history_action))):
                 messages.append({"role": "system", "content": f"第{i + 1}条历史记录:\n"})
                 history_action = self.history_action[len(self.history_action) - self.append_history_num + i]
                 messages.append({"role": history_action["role"], "content": history_action['content']})
-        messages.extend(self.initial_messages(current_task))
+        messages.extend(self.initial_messages(current_task, **kwargs))
         return messages
 
-    def design(self, messages):
+    def design(self, messages, **kwargs):
         response, usage = chat_llm(messages)
         self.usages.append(usage)
         self.log(response.role)
         self.log(response.content)
         messages.append({"role": response.role, "content": response.content})
-        result, sub_task_list = self.execute(response.content)
+        next_task, results, sub_task_list = self.execute(response.content, **kwargs)
         self.history_action.append({"role": response.role, "content": str(response.content)})
-        return response.content, result, sub_task_list
+        return response.content, next_task, results, sub_task_list
 
-    def agent_base(self, current_task=None):
+    def agent_base(self, current_task=None, **kwargs):
         begin_t = datetime.now()
-        self.pre_agent()
-        result = self.agent(self.runtime_revision_number, current_task)
-        self.post_agent()
+        self.pre_agent(**kwargs)
+        next_task, results = self.agent(self.runtime_revision_number, current_task, **kwargs)
+        self.post_agent(**kwargs)
         end_t = datetime.now()
         self.cost_history.append(
             f"需求: {self.task if not current_task else current_task + '父需求:' + self.task}, 花费时间: {str(end_t - begin_t)}")
@@ -82,43 +82,44 @@ class BaseAgent(Executable):
             self.log(self.cost_history)
             self.log(f"总花费时间: {end_t - begin_t}")
             self.log([
-                         f"'completion_tokens': {usage.completion_tokens}, 'prompt_tokens': {usage.prompt_tokens}, 'total_tokens': {usage.total_tokens}"
-                         for usage in self.usages])
+                f"'completion_tokens': {usage.completion_tokens}, 'prompt_tokens': {usage.prompt_tokens}, 'total_tokens': {usage.total_tokens}"
+                for usage in self.usages])
             usage_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
             for usage in self.usages:
                 usage_total_map["completion_tokens"] += usage.completion_tokens
                 usage_total_map["prompt_tokens"] += usage.prompt_tokens
                 usage_total_map["total_tokens"] += usage.total_tokens
             self.log(f"需求: {self.task}, 花费token: {usage_total_map}")
-        return result
+        return next_task, results
 
-    def post_agent(self):
+    def post_agent(self, **kwargs):
         pass
 
-    def pre_agent(self):
+    def pre_agent(self, **kwargs):
         pass
 
-    def agent(self, runtime_revision_number, current_task=None):
+    def agent(self, runtime_revision_number, current_task=None, **kwargs):
         if not current_task:
             self.log(f"task: {self.task}")
-            messages = self.initial_prompts(self.task)
+            messages = self.initial_prompts(self.task, **kwargs)
         else:
             self.log(f"parent task: {self.task}, current task: {current_task}")
-            messages = self.initial_prompts(current_task)
+            messages = self.initial_prompts(current_task, **kwargs)
         self.log_messages(messages)
-        content, result, sub_task_list = self.design(messages)
+        content, next_task, results, sub_task_list = self.design(messages, **kwargs)
         if sub_task_list and len(sub_task_list) > 0:
             if runtime_revision_number > 0:
                 for sub_task in sub_task_list:
-                    result = self.agent(runtime_revision_number - 1, sub_task)
+                    next_task, sub_results = self.agent(runtime_revision_number - 1, sub_task)
+                    results = {**results, **sub_results}
             else:
                 raise Exception("reach max runtime revision number, task failed")
-        return result
+        return next_task, results
 
     @abstractmethod
-    def execute(self, response_content):
+    def execute(self, response_content, **kwargs):
         print(f'response_content: {response_content}')
-        return None, []
+        return None, None, []
 
     def log(self, content):
         if not isinstance(content, str):

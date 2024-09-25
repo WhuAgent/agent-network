@@ -62,14 +62,16 @@ class Pipeline:
     def design_module_agent(self, loaded_module, agent_config: AgentConfig) -> Node:
         agent_class = getattr(loaded_module, agent_config.name)
         if agent_config.init_extra_params:
-            agent_instance = agent_class(self.logger, agent_config.name, agent_config.title, agent_config.task, agent_config.role,
+            agent_instance = agent_class(self.logger, agent_config.name, agent_config.title, agent_config.task,
+                                         agent_config.role,
                                          agent_config.description, agent_config.history_number,
                                          agent_config.prompts,
                                          agent_config.tools, agent_config.runtime_revision_number,
                                          **agent_config.init_extra_params
                                          )
         else:
-            agent_instance = agent_class(self.logger, agent_config.name, agent_config.title, agent_config.task, agent_config.role,
+            agent_instance = agent_class(self.logger, agent_config.name, agent_config.title, agent_config.task,
+                                         agent_config.role,
                                          agent_config.description, agent_config.history_number,
                                          agent_config.prompts,
                                          agent_config.tools, agent_config.runtime_revision_number
@@ -77,16 +79,20 @@ class Pipeline:
         agent_children = None
         if not agent_config.if_leaf and agent_config.children and len(agent_config.children) > 0:
             agent_children = [self.design_module_agent(loaded_module, child) for child in agent_config.children]
-        return Node(agent_instance, agent_children)
+        return Node(agent_instance, agent_children, agent_config.params, agent_config.results)
 
-    def agent(self, current_task):
+    def agent(self, current_task=None):
         configs = self.load()
         agents_configs = [config["agent_config"] for config in configs]
         candidate_nodes: dict[str, Node] = {}
         candidate_task_nodes: [Node] = []
         for agents_config in agents_configs:
             nodes = self.design_agent_group(agents_config)
-            candidate_nodes[agents_config["name"]] = GroupNode(nodes, agents_config["name"], agents_config["task"])
+            candidate_nodes[agents_config["name"]] = GroupNode(nodes, agents_config["name"], agents_config["task"],
+                                                               agents_config[
+                                                                   "params"] if "params" in agents_config else {},
+                                                               agents_config[
+                                                                   "results"] if "results" in agents_config else {})
         groups_configs = [config["group_config"] for config in configs]
         for groups_config in groups_configs:
             candidate_group_nodes: dict[str, Node] = {}
@@ -96,12 +102,15 @@ class Pipeline:
                 else:
                     raise Exception(f"group: {group.agents_ref} do not exist")
             candidate_task_nodes.append(
-                TaskNode([value for key, value in candidate_group_nodes.items()], groups_config["name"],
-                         groups_config["task"]))
+                TaskNode([candidate_group_nodes[key] for key in sorted(candidate_group_nodes.keys())],
+                         groups_config["name"], groups_config["task"],
+                         groups_config["params"] if "params" in groups_config else {},
+                         groups_config["results"] if "results" in groups_config else {}))
         task_threads = []
         for candidate_task_node in candidate_task_nodes:
             task_thread = threading.Thread(
-                target=lambda ct=current_task, ctn=candidate_task_node: ctn.execute(ct)
+                target=lambda ct=current_task if not current_task else candidate_task_node.task,
+                              ctn=candidate_task_node: ctn.execute(ct)
             )
             task_threads.append(task_thread)
             task_thread.start()

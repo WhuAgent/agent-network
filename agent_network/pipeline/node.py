@@ -5,34 +5,41 @@ import threading
 
 
 class Node(Executable):
-    def __init__(self, executable: Executable, next_executables: [Executable]):
-        super().__init__(executable.name, executable.task)
+    def __init__(self, executable: Executable, next_executables: [Executable], params, results):
+        super().__init__(executable.name, executable.task, params, results)
         self.name = executable.name
         self.executable = executable
         self.next_executables = next_executables
 
     def execute(self, input_content):
         # an agent chain runs sequentially with sharing context
+        return_next_task = None
         if isinstance(self.executable, BaseAgent):
-            result = self.executable.agent_base(input_content)
+            next_task, results = self.executable.agent_base(
+                input_content if not input_content else self.executable.task,
+                **ctx.retrieves([param["name"] for param in self.params]))
+            ctx.registers(results)
             if self.next_executables:
                 for next_executable in self.next_executables:
-                    if isinstance(next_executable, BaseAgent):
-                        next_executable.agent_base(result)
-                    else:
-                        next_executable.execute(result)
+                    next_task = next_executable.execute(next_task)
+                    return_next_task = next_task
             else:
-                ctx.register_global(self.executable.name, result)
+                return_next_task = next_task
+                ctx.registers_global(ctx.retrieves([result["name"] for result in self.results]))
         else:
-            result = self.executable.execute(input_content)
+            next_task = self.executable.execute(input_content if not input_content else self.executable.task)
             if self.next_executables:
                 for next_executable in self.next_executables:
-                    next_executable.execute(result)
+                    next_task = next_executable.execute(next_task)
+                    return_next_task = next_task
+            else:
+                return_next_task = next_task
+        return return_next_task
 
 
 class GroupNode(Node):
-    def __init__(self, next_executables: [Executable], group_name, group_task):
-        super().__init__(Executable("GroupNode", "GroupNode"), next_executables)
+    def __init__(self, next_executables: [Executable], group_name, group_task, params, results):
+        super().__init__(Executable("GroupNode", "GroupNode", params, results), next_executables, params, results)
         self.group_name = group_name
         self.group_task = group_task
 
@@ -41,8 +48,13 @@ class GroupNode(Node):
             raise Exception("GroupNode do not have executables")
         group_threads = []
         for next_executable in self.next_executables:
+            current_ctx = ctx.retrieves_all()
             group_thread = threading.Thread(
-                target=lambda ne=next_executable, ic=input_content: ne.execute(ic)
+                target=lambda ne=next_executable, ic=input_content if not input_content else self.group_task: (
+                    ctx.shared_context(current_ctx),
+                    ne.execute(ic),
+                    ctx.registers_global(ctx.retrieves([result["name"] for result in self.results]))
+                )
             )
             group_threads.append(group_thread)
             group_thread.start()
@@ -51,20 +63,23 @@ class GroupNode(Node):
 
 
 class TaskNode(Node):
-    def __init__(self, next_executables: [Executable], name, task):
-        super().__init__(Executable("TaskNode", "TaskNode"), next_executables)
+    def __init__(self, next_executables: [Executable], name, task, params, results):
+        super().__init__(Executable("TaskNode", "TaskNode", params, results), next_executables, params, results)
         self.name = name
         self.task = task
 
     def execute(self, input_content):
         if not self.next_executables or len(self.next_executables) == 0:
             raise Exception("TaskNode do not have executables")
-        for next_executable in self.next_executables:
-            next_executable.execute(input_content)
         task_threads = []
         for next_executable in self.next_executables:
+            current_ctx = ctx.retrieves_all()
             task_thread = threading.Thread(
-                target=lambda ne=next_executable, ic=input_content: ne.execute(ic)
+                target=lambda ne=next_executable, ic=input_content if not input_content else self.task: (
+                    ctx.shared_context(current_ctx),
+                    ne.execute(ic),
+                    ctx.registers_global(ctx.retrieves([result["name"] for result in self.results]))
+                )
             )
             task_threads.append(task_thread)
             task_thread.start()

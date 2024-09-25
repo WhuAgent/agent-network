@@ -19,6 +19,14 @@
       "role": "",
       "initExtraParams": {
       },
+      "params": [
+        { "name": "values1", "type": "List(String)" },
+        { "name": "values2", "type": "List(String)" }
+      ],
+      "results": [
+        {"name": "values3", "type": "List(String)"},
+        {"name": "value5", "type": "String"}
+      ],
       "prompts": [
         {
           "type": "inline",
@@ -57,6 +65,7 @@
       ],
       "children": [
         {
+          "type": "agent",
           "name": "SubAgent1",
           "description": "SubAgent1",
           "ifLeaf": true,
@@ -68,6 +77,35 @@
           "energy": 0,
           "role": "",
           "prompts": [
+          ],
+          "params": [
+            { "name": "values1", "type": "List(String)" },
+            { "name": "values2", "type": "List(String)" }
+          ],
+          "results": [
+            {"name": "values3", "type": "List(String)"},
+            {"name": "value5", "type": "String"}
+          ]
+        },
+        {
+          "type": "agent-loop",
+          "name": "SubLoopAgent1",
+          "description": "SubAgent1",
+          "ifLeaf": true,
+          "ifService": false,
+          "ifKnowledgeable": true,
+          "ifLearnable": false,
+          "runtimeRevisionNumber": 1,
+          "historyNumber": 0,
+          "energy": 0,
+          "role": "",
+          "prompts": [
+          ],
+          "params": [
+            { "name": "value1", "type": "String", "from": {"name": "values1", "type": "List(String)"} }
+          ],
+          "results": [
+            { "name": "value3", "type": "String", "to": {"name": "values3", "type": "List(String)"} }
           ]
         }
       ]
