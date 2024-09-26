@@ -1,6 +1,12 @@
 # agent-network
 An Agent Self-Organizing Intelligent Network.
 
+## 环境要求
+
+Python 版本：`3.10` 。
+
+还需要在系统中运行 RabbitMQ 服务。请参考 [RabbitMQ 官方文档](https://www.rabbitmq.com/dcs/download)。
+
 ## 安装说明
 
 首次安装：

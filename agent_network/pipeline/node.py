@@ -7,7 +7,7 @@ class Executable:
         self.task = task
 
     @abstractmethod
-    def execute(self, input_content):
+    def forward(self, input_content):
         pass
 
 
@@ -18,11 +18,11 @@ class Node(Executable):
         self.executable = executable
         self.nextExecutables = nextExecutables
 
-    def execute(self, input_content):
-        result = self.executable.execute(input_content)
+    def forward(self, input_content):
+        result = self.executable.forward(input_content)
         if self.nextExecutables:
             for nextExecutable in self.nextExecutables:
-                nextExecutable.execute(result)
+                nextExecutable.forward(result)
 
 
 class GroupNode(Node):
