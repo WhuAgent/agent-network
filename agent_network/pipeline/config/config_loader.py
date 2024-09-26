@@ -6,11 +6,12 @@ class PromptsConfig:
         self.type = type
         self.contents = contents
 
+    @staticmethod
+    def prompts_decoder(obj: dict):
+        assert "type" in obj, "Prompt config illegal: Missing type"
+        assert "contents" in obj, "Prompt config illegal: Missing contents"
 
-def prompts_decoder(obj: dict):
-    if 'type' in obj and 'contents' in obj:
         return PromptsConfig(obj['type'], obj['contents'])
-    raise Exception(f'prompt config illegal: {obj}')
 
 
 class ToolsConfig:
@@ -18,19 +19,31 @@ class ToolsConfig:
         self.name = name
         self.type = type
 
-
-def tools_decoder(obj: dict):
-    if 'type' in obj and 'name' in obj:
-        return PromptsConfig(obj['name'], obj['type'])
-    raise Exception(f'tools config illegal: {obj}')
+    @staticmethod
+    def tools_decoder(obj: dict):
+        if 'type' in obj and 'name' in obj:
+            return PromptsConfig(obj['name'], obj['type'])
+        raise Exception(f'tools config illegal: {obj}')
 
 
 class AgentConfig:
-    def __init__(self, name: str, title: str, description: str, task: str, role: str, if_leaf: bool,
-                 prompts: [PromptsConfig], tools: [ToolsConfig] = None, children: [AgentConfig] = None,
-                 if_knowledgeable: bool = False, if_learnable: bool = False, if_service: bool = False,
-                 runtime_revision_number: int = 0, history_number: int = 0, energy: int = 0,
-                 init_extra_params: dict = {}):
+    def __init__(self,
+                 name: str,
+                 title: str,
+                 description: str,
+                 task: str,
+                 role: str,
+                 if_leaf: bool,
+                 prompts: [PromptsConfig],
+                 tools: [ToolsConfig] = None,
+                 children: [AgentConfig] = None,
+                 if_knowledgeable: bool = False,
+                 if_learnable: bool = False,
+                 if_service: bool = False,
+                 runtime_revision_number: int = 0,
+                 history_number: int = 0,
+                 energy: int = 0,
+                 init_extra_params: dict = dict()):
         self.name = name
         self.title = title
         self.description = description
@@ -48,10 +61,16 @@ class AgentConfig:
         self.children = children
         self.init_extra_params = init_extra_params
 
+    @staticmethod
+    def agent_decoder(obj: dict):
+        assert "description" in obj, "Agent config illegal: Missing description"
+        assert "title" in obj, "Agent config illegal: Missing title"
+        assert "name" in obj, "Agent config illegal: Missing name"
+        assert "ifLeaf" in obj, "Agent config illegal: Missing ifLeaf"
+        assert "role" in obj, "Agent config illegal: Missing role"
+        assert "prompts" in obj, "Agent config illegal: Missing prompts"
+        assert "task" in obj, "Agent config illegal: Missing task"
 
-def agent_decoder(obj: dict):
-    if 'description' in obj and 'title' in obj and 'name' in obj and 'ifLeaf' in obj and 'role' in obj \
-            and 'prompts' in obj and 'task' in obj:
         return AgentConfig(obj['name'], obj['title'], obj['description'], obj['task'], obj['role'], obj['ifLeaf'],
                            obj['prompts'],
                            obj['tools'] if 'tools' in obj else None,
@@ -62,9 +81,7 @@ def agent_decoder(obj: dict):
                            obj['runtimeRevisionNumber'] if 'runtimeRevisionNumber' in obj else None,
                            obj['historyNumber'] if 'historyNumber' in obj else None,
                            obj['energy'] if 'energy' in obj else None,
-                           obj['initExtraParams'] if 'initExtraParams' in obj else None,
-                           )
-    raise Exception(f'agent config illegal: {obj}')
+                           obj['initExtraParams'] if 'initExtraParams' in obj else None)
 
 
 class GroupConfig:
@@ -87,10 +104,15 @@ class GroupConfig:
         self.children = children
         self.agents_ref = agents_ref
 
+    @staticmethod
+    def group_decoder(obj: dict):
+        assert "description" in obj, "Group config illegal: Missing description"
+        assert "name" in obj, "Group config illegal: Missing name"
+        assert "ifLeaf" in obj, "Group config illegal: Missing ifLeaf"
+        assert "agentsRef" in obj, "Group config illegal: Missing agentsRef"
+        assert "prompts" in obj, "Group config illegal: Missing prompts"
+        assert "task" in obj, "Group config illegal: Missing task"
 
-def group_decoder(obj: dict):
-    if 'description' in obj and 'name' in obj and 'ifLeaf' in obj and 'agentsRef' in obj \
-            and 'prompts' in obj and 'task' in obj:
         return GroupConfig(obj['name'], obj['description'], obj['task'], obj['ifLeaf'], obj['agentsRef'],
                            obj['prompts'],
                            obj['tools'] if 'tools' in obj else None,
@@ -102,4 +124,3 @@ def group_decoder(obj: dict):
                            obj['historyNumber'] if 'historyNumber' in obj else None,
                            obj['energy'] if 'energy' in obj else None,
                            )
-    raise Exception(f'group config illegal: {obj}')
