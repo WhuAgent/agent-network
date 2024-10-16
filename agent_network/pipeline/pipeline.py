@@ -1,7 +1,9 @@
 import importlib
 import json
-from agent_network.pipeline.config.config_loader import agent_decoder, group_decoder, AgentConfig
+import yaml
+from agent_network.pipeline.config.config_loader import GroupConfig, AgentConfig
 from agent_network.pipeline.node import Node, GroupNode, TaskNode
+from agent_network.base import BaseGroup
 import os
 import threading
 import agent_network.pipeline.context as ctx
@@ -13,6 +15,19 @@ class Pipeline:
         self.logger = logger
         self.nodes = []
 
+    # def __init__(self, config_file_path, logger):
+    #     with open(config_file_path, "r", encoding="UTF-8") as f:
+    #         self.config = yaml.safe_load(f)
+    #     self.logger = logger
+    #     self.nodes = []
+    #     self.global_context = self.config["context"]
+    #     self.load()
+
+    # def load(self):
+    #     configs = []
+    #     for group in self.config["group_pipline"]:
+    #         group_name, group_config_path = list(group.items())[0]
+    #         self.nodes.append(BaseGroup(group_config_path, self.logger, self.global_context))
     def load(self):
         configs = []
         for root, dirs, files in os.walk(self.config_dir):
@@ -80,6 +95,10 @@ class Pipeline:
         if not agent_config.if_leaf and agent_config.children and len(agent_config.children) > 0:
             agent_children = [self.design_module_agent(loaded_module, child) for child in agent_config.children]
         return Node(agent_instance, agent_children, agent_config.params, agent_config.results)
+
+    # def forward(self, current_task):
+    #     for node in self.nodes:
+    #         node.forward(current_task=current_task)
 
     def agent(self, current_task=None):
         configs = self.load()

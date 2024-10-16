@@ -8,3 +8,4 @@ if __name__ == '__main__':
     pipeline = Pipeline(config_dir, logger)
     pipeline.agent(current_task)
     pipeline.release()
+    # pipeline.forward(task)

@@ -4,3 +4,6 @@ dist/*
 .idea/
 __pycache__/
 log/
+tbot/
+test/
+utils/

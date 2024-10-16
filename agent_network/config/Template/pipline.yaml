@@ -1,0 +1,22 @@
+# pipline 名称
+name: "open document then input content"
+
+# pipline 详细描述
+description: "open document then input content"
+
+# pipline 所执行的任务
+task: "打开文档 test.docx, 并在其中输入 Hello World"
+
+# 为了完成任务的计划，通过调用 group 完成任务
+group_pipline:
+  - tbot_group: "agent_network/config/Template/group.yaml"
+
+# 任务执行过程中的上下文信息（如返回值等），用于 group 之间的信息传递
+context:
+  task: ""
+  plan: ""
+  cur_action: ""
+  history_actions:
+  variable_memory:
+  error: ""
+  code:
