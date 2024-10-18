@@ -27,6 +27,16 @@ need_chat: True
 # 初始化时需要的额外参数
 initExtraParams:
 
+# 执行上下文参数
+params:
+  - name: ""
+    type: ""
+
+# 执行上下文结果
+result:
+  - name: ""
+    type: ""
+
 # agent 的 prompt
 prompts:
   - type: "inline"

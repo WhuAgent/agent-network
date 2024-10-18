@@ -14,6 +14,25 @@ agents:
   - ExecutionAgent: "agent_network/config/Template/agent/execution_agent.yaml"
   - ServiceAgent: "agent_network/config/Template/agent/service_agent.yaml"
 
+routes:
+  - source: "start"
+    target: "PlanAgent"
+  - source: "PlanAgent"
+    target: "ExecutionAgent"
+    type: "message"
+  - source: "ExecutionAgent"
+    target": "end"
+
+# 执行上下文参数
+params:
+  - name: ""
+    type: ""
+
+# 执行上下文结果
+result:
+  - name: ""
+    type: ""
+
 # 信息流开始的 agent
 start_agent: PlanAgent
 
