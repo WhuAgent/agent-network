@@ -1,10 +1,10 @@
-# pipline 名称
-name: "open document then input content"
+# pipeline 名称
+name: "天气获取与信息发送 pipeline"
 
-# pipline 详细描述
-description: "open document then input content"
+# pipeline 详细描述
+description: "从网络上获取天气信息，并告知用户"
 
-# pipline 所执行的任务
+# pipeline 所执行的任务
 task: "打开文档 test.docx, 并在其中输入 Hello World"
 
 # 为了完成任务的计划，通过调用 group 完成任务
