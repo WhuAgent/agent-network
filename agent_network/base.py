@@ -1,160 +1,85 @@
 import importlib
 import json
-import pika
-from agent_network.network.route import Route
+
+from agent_network.network.graph import Graph
+from agent_network.network.route import Route, RabbitMQRoute
 from agent_network.network.nodes.node import Node
-from agent_network.message.utils import chat_llm
+from agent_network.network.nodes.graph_node import AgentNode
 from datetime import datetime
 import yaml
 from agent_network.network.executable import Executable
+import agent_network.pipeline.context as ctx
 from abc import abstractmethod
+
+from time import sleep
 
 
 class BaseAgent(Executable):
 
-    def __init__(self, logger, name, title, task, role, description, history_number, prompts, tools,
-                 runtime_revision_number, **kwargs):
-        super().__init__(name, task)
-        self.task = task
-        self.title = title
-        self.name = name
-        self.role = role
-        self.description = description
-        self.prompts = prompts
-        self.tools = tools
+    def __init__(self, config, logger):
+        super().__init__(config["name"], config["task"])
+        self.config = config
+        self.task = self.config["task"]
+        self.title = self.config["name"]
+        self.description = self.config["description"]
+        self.class_name = self.config["ref_id"]
+        self.role = self.config["role"]
+        self.description = self.config["description"]
+
+        self.params = self.config["params"]
+        self.results = self.config["results"]
+
+        self.model = self.config["model"]
+        self.prompts = self.config["prompts"]
+        self.tools = self.config["tools"]
+        self.communication_config = self.config["communication"]
         self.logger = logger
         self.if_error = False
         self.error = None
         self.history_action = []
-        self.append_history_num = history_number
-        self.runtime_revision_number = runtime_revision_number
+        self.append_history_num = 0
+        self.runtime_revision_number = 0
         self.cost_history = []
         self.usages = []
-        self.context = {**kwargs}
-        self.start_communication()
 
-    def start_communication(self):
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-        self.channel = self.connection.channel()
+        self.messages = []
+        self.initial_messages()
 
-        exchange_name = f"{self.name}Exchange"
-        queue_name = f"{self.name}"
-
-        self.channel.exchange_declare(exchange=exchange_name, exchange_type='direct')
-        self.channel.queue_declare(queue=queue_name, durable=True)
-        self.channel.queue_bind(exchange=exchange_name, queue=queue_name, routing_key=queue_name)
-        self.channel.basic_consume(queue=queue_name, on_message_callback=self.on_message, auto_ack=True)
-        self.channel.start_consuming()
-
-    def initial_messages(self, current_task, **kwargs):
-        messages = []
-        for prompt in self.prompts:
-            prompt_messages = []
-            if prompt.type == "file":
-                for content in prompt.contents:
-                    with open(content, "r", encoding="UTF-8") as f:
-                        prompt = yaml.safe_load(f)
-                        prompt["task_prompt"] = prompt["task_prompt"].replace("{task}", f"{current_task}")
-                        prompt_messages.extend([
-                            {"role": "system", "content": prompt["system_prompt"]},
-                            {"role": "user", "content": prompt["task_prompt"]}
-                        ])
-            elif prompt.type == "inline":
-                inline_messages = []
-                for content in prompt.contents:
-                    prompt_content = json.load(content)
-                    inline_messages.append({"role": prompt_content["role"],
-                                            "content": prompt_content["content"].replace("{task}", current_task)})
-                prompt_messages.extend(inline_messages)
-            messages.extend(prompt_messages)
-        return messages
-
-    def initial_prompts(self, current_task, **kwargs):
-        messages = []
-        if self.append_history_num > 0:
-            for i in range(min(self.append_history_num, len(self.history_action))):
-                messages.append({"role": "system", "content": f"第{i + 1}条历史记录:\n"})
-                history_action = self.history_action[len(self.history_action) - self.append_history_num + i]
-                messages.append({"role": history_action["role"], "content": history_action['content']})
-        messages.extend(self.initial_messages(current_task, **kwargs))
-        return messages
-
-    def before_agent(self, content):
-        pass
-
-    def after_agent(self, success, result, message_to, context):
-        pass
-
-    def design(self, messages, **kwargs):
-        response, usage = chat_llm(messages)
-        self.usages.append(usage)
-        self.log(response.role, response.content)
-        messages.append({"role": response.role, "content": response.content})
-        next_task, results, sub_task_list = self.execute(response.content, **kwargs)
-        self.history_action.append({"role": response.role, "content": str(response.content)})
-        return response.content, next_task, results, sub_task_list
-
-    def agent_base(self, current_task=None, **kwargs):
-        begin_t = datetime.now()
-        self.pre_agent(**kwargs)
-        next_task, results = self.agent(self.runtime_revision_number, current_task, **kwargs)
-        self.post_agent(**kwargs)
-        end_t = datetime.now()
-        self.cost_history.append(
-            f"需求: {self.task if not current_task else current_task + '父需求:' + self.task}, 花费时间: {str(end_t - begin_t)}")
-        if not current_task:
-            self.log(self.name, self.cost_history)
-            self.log(self.name, f"总花费时间: {end_t - begin_t}")
-            self.log(self.name, [
-                f"'completion_tokens': {usage.completion_tokens}, 'prompt_tokens': {usage.prompt_tokens}, 'total_tokens': {usage.total_tokens}"
-                for usage in self.usages])
-            usage_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
-            for usage in self.usages:
-                usage_total_map["completion_tokens"] += usage.completion_tokens
-                usage_total_map["prompt_tokens"] += usage.prompt_tokens
-                usage_total_map["total_tokens"] += usage.total_tokens
-            self.log(self.name, f"需求: {self.task}, 花费token: {usage_total_map}")
-        return next_task, results
-        # begin_t = datetime.now()
-        # content = self.before_agent(content)
-        # self.log(message_from, content, self.class_name)
-        # self.messages.append({"role": "user", "content": content})
-        # success, result, message_to, context = self.agent(self.runtime_revision_number, content)
-        # self.after_agent(success, result, message_to, context)
-        # end_t = datetime.now()
-        # return result
-
-    def on_message(self, ch, method, properties, body):
-        pass
-
-    def post_agent(self, **kwargs):
-        pass
-
-    def pre_agent(self, **kwargs):
-        pass
-
-    def agent(self, runtime_revision_number, current_task=None, **kwargs):
-        if not current_task:
-            self.log(self.name, f"task: {self.task}")
-            messages = self.initial_prompts(self.task, **kwargs)
-        else:
-            self.log(self.name, f"parent task: {self.task}, current task: {current_task}")
-            messages = self.initial_prompts(current_task, **kwargs)
-        self.log_messages(messages)
-        content, next_task, results, sub_task_list = self.design(messages, **kwargs)
-        if sub_task_list and len(sub_task_list) > 0:
-            if runtime_revision_number > 0:
-                for sub_task in sub_task_list:
-                    next_task, sub_results = self.agent(runtime_revision_number - 1, sub_task)
-                    results = {**results, **sub_results}
-            else:
-                raise Exception("reach max runtime revision number, task failed")
-        return next_task, results
+    def add_message(self, role, content):
+        self.messages.append({
+            "role": role,
+            "content": content
+        })
+        self.log(role, content, self.__class__.__name__)
 
     @abstractmethod
-    def execute(self, response_content, **kwargs):
-        print(f'response_content: {response_content}')
-        return None, None, []
+    def initial_messages(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def forward(self, message, **kwargs):
+        results = dict()
+        return results
+
+    def execute(self, current_task, **kwargs):
+        begin_t = datetime.now()
+        results = self.forward(current_task, **kwargs)
+        end_t = datetime.now()
+        # self.cost_history.append(
+        #     f"需求: {self.task if not current_task else current_task + '父需求:' + self.task}, 花费时间: {str(end_t - begin_t)}")
+        # if not current_task:
+        #     self.log(self.name, self.cost_history)
+        #     self.log(self.name, f"总花费时间: {end_t - begin_t}")
+        #     self.log(self.name, [
+        #         f"'completion_tokens': {usage.completion_tokens}, 'prompt_tokens': {usage.prompt_tokens}, 'total_tokens': {usage.total_tokens}"
+        #         for usage in self.usages])
+        #     usage_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
+        #     for usage in self.usages:
+        #         usage_total_map["completion_tokens"] += usage.completion_tokens
+        #         usage_total_map["prompt_tokens"] += usage.prompt_tokens
+        #         usage_total_map["total_tokens"] += usage.total_tokens
+        #     self.log(self.name, f"需求: {self.task}, 花费token: {usage_total_map}")
+        return results
 
     def log(self, role, content, class_name=None):
         if class_name is None:
@@ -162,7 +87,7 @@ class BaseAgent(Executable):
         cur_time = datetime.now()
         if not isinstance(content, str):
             content = json.dumps(content, indent=4, ensure_ascii=False)
-        print(content)
+        # print(content)
         self.logger.log(cur_time, role, content, class_name=class_name)
 
     def log_messages(self, messages):
@@ -171,30 +96,40 @@ class BaseAgent(Executable):
 
 
 class BaseAgentGroup(Executable):
-    def __init__(self, configs, graph, logger):
-        super().__init__(configs["name"], configs["task"])
-        self.config = configs
+    def __init__(self, config, logger):
+        super().__init__(config["name"], config["task"])
+        self.config = config
         self.name = self.config["name"]
         self.logger = logger
-        self.agents = []
-        self.routes = {}
-        for route_config in self.config["routes"]:
-            if route_config["source"] not in self.routes:
-                self.routes[route_config["source"]] = []
-            route = Route(route_config["source"], route_config["target"], route_config["type"])
-            self.routes[route_config["source"]].append(route)
+
+        self.block_flag = self.config["block_flag"]
+
+        self.agents = dict()
+        self.agent_communication_prompt = dict()
+        self.context = dict()
+
+        self.graph = Graph(self.name, None, None, None)
+        self.load_graph()
+
+        self.route_threads = []
+        self.routes = dict()
+        self.load_routes()
 
         self.tools = []
-        self.load(graph)
-        self.graph = graph
 
-    def load(self, graph):
+    def load_graph(self):
         for agent_item in self.config["agents"]:
             agent_name, agent_config_path = list(agent_item.items())[0]
             with open(agent_config_path, "r", encoding="utf-8") as f:
                 agent_config = yaml.safe_load(f)
                 agent = self.import_agent(agent_config)
-                graph.add_node(agent_name, Node(agent, agent_config["params"], agent_config["results"]))
+                self.agents[agent_name] = agent
+                self.graph.add_node(agent_name,
+                                    AgentNode(agent,
+                                              agent_config["name"],
+                                              agent_config["task"],
+                                              agent_config["params"],
+                                              agent_config["results"]))
 
     def import_agent(self, agent_config):
         if agent_config["load_type"] == "module":
@@ -210,17 +145,58 @@ class BaseAgentGroup(Executable):
                                              **agent_config["init_extra_params"]
                                              )
             else:
-                agent_instance = agent_class(self.logger, agent_config["name"], agent_config["title"],
-                                             agent_config["task"],
-                                             agent_config["role"],
-                                             agent_config["description"], agent_config["history_number"],
-                                             agent_config["prompts"],
-                                             agent_config["tools"], agent_config["runtime_revision_number"],
-                                             )
+                agent_instance = agent_class(agent_config, self.logger)
         else:
             raise Exception("Agent load type must be module!")
         return agent_instance
 
-    def execute(self, task, **kwargs):
-        for start_route in self.routes["start"]:
-            start_route.execute(self.graph, task)
+    def load_routes(self):
+        self.routes["start"] = Route(self.graph, "start")
+
+        for agent in self.agents.keys():
+            self.routes[agent] = Route(self.graph, agent)
+        
+        agent_communicate_with = dict()
+
+        self.routes["start"].add_contact(self.config["start_agent"], "system")
+        if self.config["routes"]:
+            for route in self.config["routes"]:
+                self.routes[route["source"]].add_contact(route["target"], route["type"])
+                if route["source"] not in agent_communicate_with:
+                    agent_communicate_with[route["source"]] = [route["target"]]
+                else:
+                    agent_communicate_with[route["source"]].append(route["target"])
+
+            for agent in self.agents.keys():
+                prompt = "你还擅长沟通，将与以下智能体合作进行任务：\n"
+                for target in agent_communicate_with[agent]:
+                    prompt = f'{prompt}{self.agents[target].name}: {self.agents[target].description}\n'
+                if agent == self.config["end_agent"]:
+                    prompt = f"{prompt}当任务被完成时，你需要将 next_task 设置为 COMPLETE"
+                # self.agent_communication_prompt[agent] = prompt
+                self.agents[agent].add_message("system", prompt)
+
+    def blocked(self, **kwargs):
+        if self.block_flag is None:
+            return False
+        for flag in self.block_flag:
+            if flag not in ctx.retrieve_global_all():
+                return True
+        return False
+    
+    def execute(self, demand, **kwargs):
+        while self.blocked():
+            sleep(1)
+        
+        cur_execution_agent = "start"
+        nxt_execution_agent = self.config["start_agent"]
+
+        step = 0
+        while step <= 100:
+            if demand == "COMPLETE":
+                break
+            results = self.routes[cur_execution_agent].execute(nxt_execution_agent, demand)
+            cur_execution_agent = nxt_execution_agent
+            nxt_execution_agent = results.get("next_agent")
+            demand = results.get("next_task")
+

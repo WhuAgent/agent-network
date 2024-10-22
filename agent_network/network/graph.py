@@ -6,7 +6,7 @@ from abc import abstractmethod
 
 class Graph(Executable):
     def __init__(self, name, task, params, results):
-        super().__init__(name, task, params, results)
+        super().__init__(name, task)
         self.name = name
         self.task = task
         self.params = params
@@ -36,15 +36,17 @@ class GraphStart:
         start_nodes = [self.graph.nodes[start_agent] for start_agent in start_nodes]
         nodes_threads = []
         for start_node in start_nodes:
-            current_ctx = ctx.retrieves_all()
+            current_ctx = ctx.retrieve_global_all()
             node_thread = threading.Thread(
                 target=lambda ne=start_node, ic=task if not task else self.graph.task: (
                     ctx.shared_context(current_ctx),
                     ne.execute(ic),
-                    ctx.registers_global(ctx.retrieves([result["name"] for result in self.graph.results]))
+                    ctx.registers_global(ctx.retrieves([result["name"] for result in self.graph.results] if self.graph.results else []))
                 )
             )
             nodes_threads.append(node_thread)
+
+        for node_thread in nodes_threads:
             node_thread.start()
         for node_thread in nodes_threads:
             node_thread.join()

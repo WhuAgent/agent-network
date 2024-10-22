@@ -19,6 +19,10 @@ def retrieve_global(key):
     else:
         raise Exception(f"global context do not contain key: {key}")
 
+    
+def retrieves_global(keys):
+    return {key: retrieve_global(key) for key in keys}
+
 
 def retrieve_global_all():
     return global_map
@@ -39,6 +43,8 @@ def register(key, value):
 
 
 def registers(params_map):
+    if params_map is None:
+        return
     for key, value in params_map.items():
         register(key, value)
 

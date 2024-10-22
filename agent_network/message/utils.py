@@ -2,7 +2,7 @@ from openai import OpenAI
 import os
 import yaml
 
-openai_config_path = os.path.join(os.getcwd(), 'config/openai.yml')
+openai_config_path = os.path.join(os.getcwd(), 'agent_network/message/config/openai.yml')
 with open(openai_config_path, "r", encoding="UTF-8") as f:
     openai_config = yaml.safe_load(f)
 
