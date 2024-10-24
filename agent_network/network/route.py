@@ -1,10 +1,6 @@
-from agent_network.network.executable import Executable
-import threading
-from abc import abstractmethod
-
 import pika
 
-from agent_network.utils.message import send_message
+# from agent_network.utils.message import send_message
 
 
 class Route:
@@ -66,7 +62,7 @@ class RabbitMQRoute(Route):
             exchange_name = f"{self.queue_name}WaitingForACKExchange"
             queue_name = f"{self.queue_name}WaitingForACK"
             
-            send_message(target, message, header={"message_from": queue_name})
+            # send_message(target, message, header={"message_from": queue_name})
 
             self.connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
             self.channel = self.connection.channel()
@@ -82,4 +78,4 @@ class RabbitMQRoute(Route):
     def on_message(self, ch, method, properties, body):
         results = self.graph.get_node(self.source).execute(body)
         message_from = properties["message_from"]
-        send_message(message_from, results)
+        # send_message(message_from, results)

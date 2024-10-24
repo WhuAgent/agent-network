@@ -4,7 +4,7 @@ from agent_network.network.executable import Executable
 
 class Network(Executable):
     def __init__(self, name, task, params, results):
-        super().__init__(name, task, params, results)
+        super().__init__(name, task)
         self.name = name
         self.task = task
         self.params = params

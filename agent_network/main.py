@@ -1,3 +1,5 @@
+import threading
+from posix import _exit
 from pipeline.pipeline import Pipeline
 from utils.logger import Logger
 from flask import Flask, request
@@ -15,8 +17,8 @@ def task():
     config_dir = request.args.get('dir')
     # config_dir = "agent_network/config"
     logger = Logger("log")
-    pipeline = Pipeline(config_dir, logger)
-    pipeline.agent(network.get_graph(graph), current_task)
+    pipeline = Pipeline(current_task, config_dir, logger)
+    pipeline.execute(network.get_graph(graph))
     result = pipeline.retrieve_results()
     pipeline.release()
     return result
@@ -27,8 +29,10 @@ def run_web(debug=False):
 
 
 if __name__ == '__main__':
-    run_web()
+    web_thread = threading.Thread(target=run_web)
+    web_thread.start()
     graph = Graph('graph', None, None, None)
     graph_start = GraphStart(graph)
     network.add_graph(graph.name, graph_start)
-    # pipeline.forward(task)
+    input("Press Enter to shutdown the agent network...\n")
+    _exit(0)
