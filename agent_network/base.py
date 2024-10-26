@@ -175,19 +175,8 @@ class BaseAgentGroup(Executable):
                     prompt = f"{prompt}当任务被完成时，你需要将 next_task 设置为 COMPLETE"
                 # self.agent_communication_prompt[agent] = prompt
                 self.agents[agent].add_message("system", prompt)
-
-    def blocked(self, **kwargs):
-        if self.block_flag is None:
-            return False
-        for flag in self.block_flag:
-            if flag not in ctx.retrieve_global_all():
-                return True
-        return False
     
     def execute(self, demand, **kwargs):
-        while self.blocked():
-            sleep(1)
-        
         cur_execution_agent = "start"
         nxt_execution_agent = self.config["start_agent"]
 
