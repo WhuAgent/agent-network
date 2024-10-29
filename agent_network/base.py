@@ -32,7 +32,6 @@ class BaseAgent(Executable):
         self.model = self.config["model"]
         self.prompts = self.config["prompts"]
         self.tools = self.config["tools"]
-        self.communication_config = self.config["communication"]
         self.logger = logger
         self.if_error = False
         self.error = None
@@ -168,13 +167,14 @@ class BaseAgentGroup(Executable):
                     agent_communicate_with[route["source"]].append(route["target"])
 
             for agent in self.agents.keys():
-                prompt = "你还擅长沟通，将与以下智能体合作进行任务：\n"
-                for target in agent_communicate_with[agent]:
-                    prompt = f'{prompt}{self.agents[target].name}: {self.agents[target].description}\n'
-                if agent == self.config["end_agent"]:
-                    prompt = f"{prompt}当任务被完成时，你需要将 next_task 设置为 COMPLETE"
-                # self.agent_communication_prompt[agent] = prompt
-                self.agents[agent].add_message("system", prompt)
+                if agent in agent_communicate_with:
+                    prompt = "你还擅长沟通，将与以下智能体合作进行任务：\n"
+                    for target in agent_communicate_with[agent]:
+                        prompt = f'{prompt}{self.agents[target].name}: {self.agents[target].description}\n'
+                    # if agent == self.config["end_agent"]:
+                        # prompt = f"{prompt}当任务被完成时，你需要将 next_task 设置为 COMPLETE"
+                    # self.agent_communication_prompt[agent] = prompt
+                    self.agents[agent].add_message("system", prompt)
 
     def blocked(self, **kwargs):
         if self.block_flag is None:
