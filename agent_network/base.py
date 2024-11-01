@@ -139,51 +139,8 @@ class BaseAgentGroup(Executable):
             raise Exception("Agent load type must be module!")
         return agent_instance
 
-    def load_routes(self, graph: Graph):
-        graph.get_node(self.name).add_route(self.config["start_agent"], "system")
-                
-        # graph.add_edge(self.name, self.config["start_agent"])
-        # self.routes["start"] = Route(self.graph, "start")
-
-        # for agent in self.agents.keys():
-        #     self.routes[agent] = Route(self.graph, agent)
-        
-        agent_communicate_with = dict()
-
-        # self.routes["start"].add_contact(self.config["start_agent"], "system")
-        if self.config["routes"]:
-            for route in self.config["routes"]:
-                # self.routes[route["source"]].add_contact(route["target"], route["type"])
-                if route["source"] not in agent_communicate_with:
-                    agent_communicate_with[route["source"]] = [route["target"]]
-                else:
-                    agent_communicate_with[route["source"]].append(route["target"])
-
-            for agent in self.agents.keys():
-                prompt = "你还擅长沟通，将与以下智能体合作进行任务：\n"
-                for target in agent_communicate_with[agent]:
-                    prompt = f'{prompt}{graph.get_node(target).name}: {graph.get_node(target).description}\n'
-                # if agent == self.config["end_agent"]:
-                #     prompt = f"{prompt}当任务被完成时，你需要将 next_task 设置为 COMPLETE"
-                # self.agent_communication_prompt[agent] = prompt
-                graph.get_node(agent).add_message("system", prompt)
-    
     def execute(self, message, **kwargs):
         return {
             "message": message,
             "next_agent": self.config["start_agent"]
         }
-        # cur_agent = "start"
-        # nxt_agent = self.config["start_agent"]
-        # results = dict()
-
-        # step = 0
-        # while step <= self.max_step and demand != "COMPLETE":
-        #     results = self.routes[cur_agent].execute(nxt_agent, demand)
-        #     cur_agent = nxt_agent
-        #     nxt_agent = results.get("next_agent")
-        #     demand = results.get("next_task")
-        #     step += 1
-        
-        # return results
-
