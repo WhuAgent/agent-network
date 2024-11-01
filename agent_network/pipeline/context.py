@@ -51,10 +51,7 @@ def registers(params_map):
 
 def retrieve(key):
     init()
-    if key in thread_local_data.context:
-        return thread_local_data.context.get(key)
-    else:
-        raise Exception(f"context do not contain key: {key}")
+    return thread_local_data.context.get(key)
 
 
 def retrieves(keys):
@@ -74,3 +71,6 @@ def release():
 def shared_context(ctx):
     for key, value in ctx.items():
         register(key, value)
+
+def delete(key):
+    thread_local_data.context.pop(key)

@@ -2,8 +2,7 @@ import importlib
 import json
 
 from agent_network.network.graph import Graph
-from agent_network.network.route import Route, RabbitMQRoute
-from agent_network.network.nodes.node import Node
+from agent_network.network.route import Route
 from agent_network.network.nodes.graph_node import AgentNode
 from datetime import datetime
 import yaml
@@ -17,7 +16,7 @@ from time import sleep
 class BaseAgent(Executable):
 
     def __init__(self, config, logger):
-        super().__init__(config["name"], config["task"])
+        super().__init__(config["name"], config["task"], config["description"])
         self.config = config
         self.task = self.config["task"]
         self.title = self.config["name"]
@@ -32,7 +31,6 @@ class BaseAgent(Executable):
         self.model = self.config["model"]
         self.prompts = self.config["prompts"]
         self.tools = self.config["tools"]
-        self.communication_config = self.config["communication"]
         self.logger = logger
         self.if_error = False
         self.error = None
@@ -96,72 +94,66 @@ class BaseAgent(Executable):
 
 
 class BaseAgentGroup(Executable):
-    def __init__(self, config, logger):
-        super().__init__(config["name"], config["task"])
+    def __init__(self, graph, config, logger):
+        super().__init__(config["name"], config["task"], config["description"])
         self.config = config
         self.name = self.config["name"]
         self.logger = logger
 
-        self.block_flag = self.config["block_flag"]
+        self.max_step = self.config["max_step"]
 
-        self.agents = dict()
+        self.agents = []
         self.agent_communication_prompt = dict()
         self.context = dict()
 
-        self.graph = Graph(self.name, None, None, None)
-        self.load_graph()
-
-        self.route_threads = []
-        self.routes = dict()
-        self.load_routes()
+        self.load_graph(graph)
+        self.add_routes(graph)
 
         self.tools = []
 
-    def load_graph(self):
+    def load_graph(self, graph):
         for agent_item in self.config["agents"]:
             agent_name, agent_config_path = list(agent_item.items())[0]
             with open(agent_config_path, "r", encoding="utf-8") as f:
                 agent_config = yaml.safe_load(f)
-                agent = self.import_agent(agent_config)
-                self.agents[agent_name] = agent
-                self.graph.add_node(agent_name,
-                                    AgentNode(agent,
-                                              agent_config["name"],
-                                              agent_config["task"],
-                                              agent_config["params"],
-                                              agent_config["results"]))
+            agent = self.import_agent(agent_config)
+            graph.add_node(agent_name,
+                            AgentNode(agent,
+                                      agent_config["params"],
+                                      agent_config["results"]))
+            self.agents.append(agent_name)
+    
+    def add_routes(self, graph: Graph):
+        graph.add_route(self.name, self.config["start_agent"], "system")
+
+        if self.config["routes"]:
+            for route in self.config["routes"]:
+                graph.add_route(route["source"], route["target"], route["type"])
 
     def import_agent(self, agent_config):
         if agent_config["load_type"] == "module":
             agent_module = importlib.import_module(agent_config["loadModule"])
             agent_class = getattr(agent_module, agent_config["loadClass"])
-            if agent_config["init_extra_params"]:
-                agent_instance = agent_class(self.logger, agent_config["name"], agent_config["title"],
-                                             agent_config["task"],
-                                             agent_config["role"],
-                                             agent_config["description"], agent_config["history_number"],
-                                             agent_config["prompts"],
-                                             agent_config["tools"], agent_config["runtime_revision_number"],
-                                             **agent_config["init_extra_params"]
-                                             )
-            else:
-                agent_instance = agent_class(agent_config, self.logger)
+            agent_instance = agent_class(agent_config, self.logger)
         else:
             raise Exception("Agent load type must be module!")
         return agent_instance
 
-    def load_routes(self):
-        self.routes["start"] = Route(self.graph, "start")
+    def load_routes(self, graph: Graph):
+        graph.get_node(self.name).add_route(self.config["start_agent"], "system")
+                
+        # graph.add_edge(self.name, self.config["start_agent"])
+        # self.routes["start"] = Route(self.graph, "start")
 
-        for agent in self.agents.keys():
-            self.routes[agent] = Route(self.graph, agent)
+        # for agent in self.agents.keys():
+        #     self.routes[agent] = Route(self.graph, agent)
         
         agent_communicate_with = dict()
 
-        self.routes["start"].add_contact(self.config["start_agent"], "system")
+        # self.routes["start"].add_contact(self.config["start_agent"], "system")
         if self.config["routes"]:
             for route in self.config["routes"]:
-                self.routes[route["source"]].add_contact(route["target"], route["type"])
+                # self.routes[route["source"]].add_contact(route["target"], route["type"])
                 if route["source"] not in agent_communicate_with:
                     agent_communicate_with[route["source"]] = [route["target"]]
                 else:
@@ -170,33 +162,28 @@ class BaseAgentGroup(Executable):
             for agent in self.agents.keys():
                 prompt = "你还擅长沟通，将与以下智能体合作进行任务：\n"
                 for target in agent_communicate_with[agent]:
-                    prompt = f'{prompt}{self.agents[target].name}: {self.agents[target].description}\n'
-                if agent == self.config["end_agent"]:
-                    prompt = f"{prompt}当任务被完成时，你需要将 next_task 设置为 COMPLETE"
+                    prompt = f'{prompt}{graph.get_node(target).name}: {graph.get_node(target).description}\n'
+                # if agent == self.config["end_agent"]:
+                #     prompt = f"{prompt}当任务被完成时，你需要将 next_task 设置为 COMPLETE"
                 # self.agent_communication_prompt[agent] = prompt
-                self.agents[agent].add_message("system", prompt)
-
-    def blocked(self, **kwargs):
-        if self.block_flag is None:
-            return False
-        for flag in self.block_flag:
-            if flag not in ctx.retrieve_global_all():
-                return True
-        return False
+                graph.get_node(agent).add_message("system", prompt)
     
-    def execute(self, demand, **kwargs):
-        while self.blocked():
-            sleep(1)
-        
-        cur_execution_agent = "start"
-        nxt_execution_agent = self.config["start_agent"]
+    def execute(self, message, **kwargs):
+        return {
+            "message": message,
+            "next_agent": self.config["start_agent"]
+        }
+        # cur_agent = "start"
+        # nxt_agent = self.config["start_agent"]
+        # results = dict()
 
-        step = 0
-        while step <= 100:
-            if demand == "COMPLETE":
-                break
-            results = self.routes[cur_execution_agent].execute(nxt_execution_agent, demand)
-            cur_execution_agent = nxt_execution_agent
-            nxt_execution_agent = results.get("next_agent")
-            demand = results.get("next_task")
+        # step = 0
+        # while step <= self.max_step and demand != "COMPLETE":
+        #     results = self.routes[cur_agent].execute(nxt_agent, demand)
+        #     cur_agent = nxt_agent
+        #     nxt_agent = results.get("next_agent")
+        #     demand = results.get("next_task")
+        #     step += 1
+        
+        # return results
 
