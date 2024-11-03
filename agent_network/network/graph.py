@@ -1,5 +1,4 @@
 from agent_network.network.executable import Executable
-from agent_network.network.route import Route
 import agent_network.pipeline.context as ctx
 import threading
 from abc import abstractmethod
@@ -10,13 +9,13 @@ class Graph(Executable):
         super().__init__(name, task, description)
         self.name = name
         self.task = task
-        
+
         self.params = params
         self.results = results
 
         self.num_nodes = 0
         self.start_node = start_node
-        
+
         self.nodes = {}
         self.routes = []
 
@@ -26,7 +25,7 @@ class Graph(Executable):
         ctx.shared_context(current_ctx)
         result, next_execution = self.nodes.get(node).execute(message, **kwargs)
         ctx.registers_global(ctx.retrieves([result["name"] for result in self.results] if self.results else []))
-        
+
         return result, next_execution
 
     def add_node(self, name, node: Executable):
@@ -36,14 +35,13 @@ class Graph(Executable):
 
     def get_node(self, name) -> Executable:
         return self.nodes[name]
-    
+
     def add_route(self, source, target, message_type):
         self.routes.append({
             "source": source,
             "target": target,
             "message_type": message_type
         })
-
 
 
 # TODO 基于感知层去调度graph及其智能体
@@ -62,7 +60,8 @@ class GraphStart:
                 target=lambda ne=start_node, ic=task if not task else self.graph.task: (
                     ctx.shared_context(current_ctx),
                     ne.execute(ic),
-                    ctx.registers_global(ctx.retrieves([result["name"] for result in self.graph.results] if self.graph.results else []))
+                    ctx.registers_global(
+                        ctx.retrieves([result["name"] for result in self.graph.results] if self.graph.results else []))
                 )
             )
             nodes_threads.append(node_thread)

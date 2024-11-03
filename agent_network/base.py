@@ -2,15 +2,11 @@ import importlib
 import json
 
 from agent_network.network.graph import Graph
-from agent_network.network.route import Route
 from agent_network.network.nodes.graph_node import AgentNode
 from datetime import datetime
 import yaml
 from agent_network.network.executable import Executable
-import agent_network.pipeline.context as ctx
 from abc import abstractmethod
-
-from time import sleep
 
 
 class BaseAgent(Executable):
@@ -118,11 +114,11 @@ class BaseAgentGroup(Executable):
                 agent_config = yaml.safe_load(f)
             agent = self.import_agent(agent_config)
             graph.add_node(agent_name,
-                            AgentNode(agent,
-                                      agent_config["params"],
-                                      agent_config["results"]))
+                           AgentNode(agent,
+                                     agent_config["params"],
+                                     agent_config["results"]))
             self.agents.append(agent_name)
-    
+
     def add_routes(self, graph: Graph):
         graph.add_route(self.name, self.config["start_agent"], "system")
 

@@ -19,7 +19,6 @@ class Pipeline:
             elif item["type"] == "list":
                 ctx.register(item["name"], [])
 
-
     def load_graph(self, graph):
         # 加载节点
         for group in self.config["group_pipline"]:
@@ -30,17 +29,18 @@ class Pipeline:
                                GroupNode(BaseAgentGroup(graph, configs, self.logger),
                                          configs["params"],
                                          configs["results"]))
-        
+
         return graph
-    
+
     def load_route(self, graph: Graph, route: Route):
         for node_name, node_instance in graph.nodes.items():
             route.register_node(node_name, node_instance.description)
 
         for item in graph.routes:
             route.register_contact(item["source"], item["target"], item["message_type"])
-        
+
         return route
+
     def execute(self, graph: Graph, route: Route, task: str):
         # 加载任务节点
         graph = self.load_graph(graph)

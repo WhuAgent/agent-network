@@ -4,7 +4,7 @@ from agent_network.network.executable import Executable
 
 class Network(Executable):
     def __init__(self, name, task, params, results):
-        super().__init__(name, task)
+        super().__init__(name, task, name)
         self.name = name
         self.task = task
         self.params = params
@@ -12,7 +12,7 @@ class Network(Executable):
         self.graphs = {}
 
     @abstractmethod
-    def execute(self, input_content):
+    def execute(self, input_content, **kwargs):
         pass
 
     def add_graph(self, name, graph):

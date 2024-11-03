@@ -1,8 +1,3 @@
-import pika
-
-# from agent_network.utils.message import send_message
-
-
 class Route:
     def __init__(self):
         self.node_description = {}
@@ -10,7 +5,7 @@ class Route:
 
     def register_node(self, name, description):
         assert name not in self.node_description, f"{name} already exists!"
-        
+
         self.node_description[name] = description
         self.contact_list[name] = []
 
@@ -29,12 +24,12 @@ class Route:
     def forward_message(self, source, target, message):
         if len(self.contact_list[source]) == 0:
             return "COMPLETE", "COMPLETE"
-        
+
         assert self.check_contact(source, target), f"{target} is not in {source}'s contact_list!"
-        
+
         return target, message
-    
-    def get_contactions(self, source): 
+
+    def get_contactions(self, source):
         contactions = {}
         for item in self.contact_list[source]:
             target = item["name"]

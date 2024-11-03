@@ -31,7 +31,7 @@ def run_web(debug=False):
 if __name__ == '__main__':
     web_thread = threading.Thread(target=run_web)
     web_thread.start()
-    graph = Graph('graph', None, None, None)
+    graph = Graph('graph', None, None, None, None, None)
     graph_start = GraphStart(graph)
     network.add_graph(graph.name, graph_start)
     input("Press Enter to shutdown the agent network...\n")
