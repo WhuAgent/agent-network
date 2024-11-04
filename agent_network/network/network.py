@@ -16,8 +16,9 @@ class Network(Executable):
         pass
 
     def add_graph(self, name, graph):
+        assert name not in self.graphs, f"network: {self.name} already has graph named: {name}"
         self.graphs[name] = graph
 
     def get_graph(self, name):
-        assert name not in self.graphs, f"network: {self.name} already has graph named: {name}"
+        assert name in self.graphs, f"network: {self.name} does not have graph named: {name}"
         return self.graphs[name]
