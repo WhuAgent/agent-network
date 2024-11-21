@@ -41,7 +41,9 @@ class Pipeline:
 
         return route
 
-    def execute(self, graph: Graph, route: Route, task: str):
+    def execute(self, graph: Graph, route: Route, task: str, context=None):
+        if context:
+            ctx.registers(context)
         # 加载任务节点
         graph = self.load_graph(graph)
         # 加载路由
