@@ -21,9 +21,13 @@ class Graph(Executable):
     def execute(self, node, message, **kwargs):
         current_ctx = ctx.retrieve_global_all()
         ctx.shared_context(current_ctx)
-        result, next_executables = self.nodes.get(node).execute(message, **kwargs)
-        ctx.registers_global(ctx.retrieves([result["name"] for result in self.results] if self.results else []))
-        return result, next_executables
+        try:
+            result, next_executables = self.nodes.get(node).execute(message, **kwargs)
+            ctx.registers_global(ctx.retrieves([result["name"] for result in self.results] if self.results else []))
+            return result, next_executables
+        except Exception as e:
+            self.release()
+            raise Exception(e)
 
     def add_node(self, name, node: Executable):
         if name not in self.nodes:
@@ -39,6 +43,11 @@ class Graph(Executable):
             "target": target,
             "message_type": message_type
         })
+
+    def release(self):
+        self.nodes = {}
+        self.routes = []
+        self.num_nodes = 0
 
 
 # TODO 基于感知层去调度graph及其智能体

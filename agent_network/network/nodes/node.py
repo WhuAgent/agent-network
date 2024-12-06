@@ -10,6 +10,7 @@ class Node(ParameterizedExecutable):
         self.task = executable.task
         self.description = executable.description
         self.executable = executable
+        # todo 移除防止资源竞争
         self.next_executables: [str] = []
 
     def execute(self, input_content, **kwargs):
@@ -19,8 +20,9 @@ class Node(ParameterizedExecutable):
         
         try:
             results = self.executable.execute(input_content, **kwargs)
-            default_next_executors = self.next_executables if len(self.next_executables) > 0 else None
+            default_next_executors = [exe for exe in self.next_executables] if len(self.next_executables) > 0 else None
             next_executors = [results.get("next_agent")] if results.get("next_agent") is not None else default_next_executors
+            self.next_executables.clear()
         except RetryError as e:
             if kwargs.get("graph_error_message"):
                 kwargs["graph_error_message"].append(e.message)
