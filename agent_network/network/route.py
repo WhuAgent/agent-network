@@ -17,10 +17,11 @@ class Route:
         assert name in self.node_description, f"{name} does not exist!"
         # TODO 上锁
         del self.contact_list[name]
-        for source in self.contact_list:
-            for target in self.contact_list[source]:
+        for source in list(self.contact_list.keys()):
+            for target in list(self.contact_list[source].keys()):
                 if target == name:
                     del self.contact_list[source][name]
+        del self.node_description[name]
 
     def register_contact(self, source, target, message_type):
         assert source in self.node_description, f"{source} does not exist!"

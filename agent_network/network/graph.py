@@ -1,6 +1,7 @@
 from agent_network.network.executable import Executable
 import agent_network.pipeline.context as ctx
 import threading
+from agent_network.network.route import Route
 
 
 class Graph(Executable):
@@ -17,6 +18,7 @@ class Graph(Executable):
 
         self.nodes = {}
         self.routes = []
+        self.route: Route = Route()
 
     def execute(self, node, message, **kwargs):
         current_ctx = ctx.retrieve_global_all()
@@ -33,6 +35,13 @@ class Graph(Executable):
         if name not in self.nodes:
             self.nodes[name] = node
             self.num_nodes += 1
+
+    def remove_node(self, name):
+        if name in self.nodes:
+            del self.nodes[name]
+            self.num_nodes -= 1
+            self.routes = [route for route in self.routes if route["source"] != name and route["target"] != name]
+            self.route.deregister_node(name)
 
     def get_node(self, name) -> Executable:
         return self.nodes[name]
