@@ -3,6 +3,7 @@ from posix import _exit
 
 from agent_network.network.route import Route
 from agent_network.pipeline.pipeline import Pipeline
+from agent_network.pipeline.task import TaskNode
 from agent_network.utils.logger import Logger
 from flask import Flask, request
 from agent_network.network.graph import GraphStart, Graph
@@ -20,7 +21,7 @@ def task():
     # config_dir = "agent_network/config"
     logger = Logger("log")
     pipeline = Pipeline(current_task, config_dir, logger)
-    pipeline.execute(network.get_graph(graph), Route(), current_task)
+    pipeline.execute(network.get_graph(graph), Route(), [TaskNode(pipeline.config["start_node"], current_task)])
     result = pipeline.retrieve_results()
     pipeline.release()
     return result

@@ -11,7 +11,7 @@ class Executable:
     def execute(self, input_content, **kwargs):
         pass
 
-    def add_message(self, role, content):
+    def add_message(self, role, content, messages: []):
         pass
 
 

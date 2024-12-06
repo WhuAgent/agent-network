@@ -1,7 +1,6 @@
 from agent_network.network.executable import Executable
 import agent_network.pipeline.context as ctx
 import threading
-from abc import abstractmethod
 
 
 class Graph(Executable):
@@ -19,14 +18,12 @@ class Graph(Executable):
         self.nodes = {}
         self.routes = []
 
-    @abstractmethod
     def execute(self, node, message, **kwargs):
         current_ctx = ctx.retrieve_global_all()
         ctx.shared_context(current_ctx)
-        result, next_execution = self.nodes.get(node).execute(message, **kwargs)
+        result, next_executables = self.nodes.get(node).execute(message, **kwargs)
         ctx.registers_global(ctx.retrieves([result["name"] for result in self.results] if self.results else []))
-
-        return result, next_execution
+        return result, next_executables
 
     def add_node(self, name, node: Executable):
         if name not in self.nodes:

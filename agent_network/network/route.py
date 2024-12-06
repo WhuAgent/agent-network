@@ -7,17 +7,32 @@ class Route:
         assert name not in self.node_description, f"{name} already exists!"
 
         self.node_description[name] = description
-        self.contact_list[name] = []
+        self.contact_list[name] = {}
+
+    def deregister_node(self, name):
+        assert name in self.node_description, f"{name} does not exist!"
+        # TODO 上锁
+        del self.contact_list[name]
+        for source in self.contact_list:
+            for target in self.contact_list[source]:
+                if target == name:
+                    del self.contact_list[source][name]
 
     def register_contact(self, source, target, message_type):
         assert source in self.node_description, f"{source} does not exist!"
         assert target in self.node_description, f"{target} does not exist!"
 
-        self.contact_list[source].append({"name": target, "message_type": message_type})
+        self.contact_list[source][target] = {"name": target, "message_type": message_type}
+
+    def deregister_contact(self, source, target):
+        assert source in self.node_description, f"{source} does not exist!"
+        assert target in self.node_description, f"{target} does not exist!"
+        # TODO 上锁
+        del self.contact_list[source][target]
 
     def check_contact(self, source, target):
         for item in self.contact_list[source]:
-            if target == item["name"]:
+            if target == item:
                 return True
         return False
 
@@ -32,6 +47,6 @@ class Route:
     def get_contactions(self, source):
         contactions = {}
         for item in self.contact_list[source]:
-            target = item["name"]
+            target = item
             contactions.update({target: self.node_description[target]})
         return contactions

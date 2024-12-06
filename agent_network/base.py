@@ -36,15 +36,20 @@ class BaseAgent(Executable):
         self.cost_history = []
         self.usages = []
 
-        self.messages = []
-        self.initial_messages()
+        self.system_message = self.initial_messages()
 
-    def add_message(self, role, content):
-        self.messages.append({
+    def add_message(self, role, content, messages=None):
+        if messages is None:
+            messages = []
+        if not (len(messages) > 0 and messages[0]["role"] == "system"):
+            messages.insert(0, self.system_message)
+            self.log("system", self.system_message["content"], self.__class__.__name__)
+        messages.append({
             "role": role,
             "content": content
         })
         self.log(role, content, self.__class__.__name__)
+        return messages
 
     @abstractmethod
     def initial_messages(self):
@@ -136,6 +141,7 @@ class BaseAgentGroup(Executable):
         return agent_instance
 
     def execute(self, message, **kwargs):
+        # todo start_agent move into route
         return {
             "message": message,
             "next_agent": self.config["start_agent"]
