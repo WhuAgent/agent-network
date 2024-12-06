@@ -1,7 +1,11 @@
+
 class Route:
     def __init__(self):
         self.node_description = {}
         self.contact_list = dict()
+
+    def node_exist(self, name):
+        return name in self.node_description
 
     def register_node(self, name, description):
         assert name not in self.node_description, f"{name} already exists!"
@@ -41,6 +45,9 @@ class Route:
             return "COMPLETE", "COMPLETE"
 
         assert self.check_contact(source, target), f"{target} is not in {source}'s contact_list!"
+
+        if isinstance(message, dict) and "message" in message:
+            message = message["message"]
 
         return target, message
 

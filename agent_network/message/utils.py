@@ -14,6 +14,7 @@ def chat_llm(messages):
     )
     response = openai_client.chat.completions.create(
         messages=messages,
-        model="gpt-3.5-turbo"
+        model="gpt-3.5-turbo",
+        temperature=0.2
     )
     return response.choices[0].message, response.usage

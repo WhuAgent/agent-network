@@ -34,34 +34,43 @@ class Pipeline:
 
     def load_route(self, graph: Graph, route: Route):
         for node_name, node_instance in graph.nodes.items():
-            route.register_node(node_name, node_instance.description)
+            if not route.node_exist(node_name):
+                route.register_node(node_name, node_instance.description)
 
         for item in graph.routes:
             route.register_contact(item["source"], item["target"], item["message_type"])
 
-    def execute(self, graph: Graph, route: Route, task: str, context=None):
-        return self.execute_graph(graph, route, [TaskNode(self.config["start_node"], task)], context)
+    def load(self, graph: Graph, route: Route):
+        if self.turn == 0:
+            self.load_graph(graph)
+            self.load_route(graph, route)
 
-    def execute_graph(self, graph: Graph, route: Route, nodes: [TaskNode], context=None):
+    def execute(self, graph: Graph, route: Route, task: str, context=None):
+        self.load(graph, route)
+        return self.execute_graph(graph, route, [TaskNode(graph.get_node(self.config["start_node"]), task)], context, True)
+
+    def execute_graph(self, graph: Graph, route: Route, nodes: [TaskNode], context=None, skip_load=False):
+        if not skip_load:
+            self.load(graph, route)
         if nodes is None or len(nodes) == 0:
             return
         self.turn += 1
         if context:
             ctx.registers(context)
-        # 加载任务节点
-        self.load_graph(graph)
-        # 加载路由
-        self.load_route(graph, route)
         # TODO 由感知层根据任务激活决定触发哪些 Agent，现在默认线性执行所有 TaskNode
         next_nodes: [TaskNode] = []
         for node in nodes:
+            # todo 讨论是否需要合并message到上下文中
             message = node.task
-            result, next_executables = graph.execute(node, message)
+            result, next_executables = graph.execute(node.name, message)
+            self.load_route(graph, route)
+            if next_executables is None:
+                continue
             for next_executable in next_executables:
-                next_executable, message = route.forward_message(node, next_executable, result)
+                next_executable, message = route.forward_message(node.name, next_executable, result)
                 # if not leaf node
                 if message != "COMPLETE":
-                    next_nodes.append(TaskNode(next_executable, message))
+                    next_nodes.append(TaskNode(graph.get_node(next_executable), message))
         self.execute_graph(graph, route, next_nodes)
         return ctx.retrieve_global_all()
 

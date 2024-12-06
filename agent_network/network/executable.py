@@ -2,6 +2,7 @@ from abc import abstractmethod
 
 
 class Executable:
+    # todo delete task
     def __init__(self, name, task, description):
         self.name = name
         self.task = task

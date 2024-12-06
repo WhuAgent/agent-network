@@ -48,7 +48,7 @@ class BaseAgent(Executable):
             "role": role,
             "content": content
         })
-        self.log(role, content, self.__class__.__name__)
+        self.log(role, content)
         return messages
 
     @abstractmethod

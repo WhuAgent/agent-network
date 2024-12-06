@@ -10,7 +10,7 @@ class Node(ParameterizedExecutable):
         self.task = executable.task
         self.description = executable.description
         self.executable = executable
-        self.next_executables = []
+        self.next_executables: [str] = []
 
     def execute(self, input_content, **kwargs):
         kwargs.update(ctx.retrieves([param["name"] for param in self.params]))
