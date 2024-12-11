@@ -27,7 +27,7 @@ class Route:
         return False
 
     def forward_message(self, source, target, message):
-        if len(self.contact_list[source]) == 0:
+        if len(self.contact_list[source]) == 0 or target == "COMPLETE":
             return "COMPLETE", "COMPLETE"
         
         assert self.check_contact(source, target), f"{target} is not in {source}'s contact_list!"
