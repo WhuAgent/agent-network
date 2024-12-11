@@ -1,22 +1,29 @@
 # pipeline 名称
-name: "天气获取与信息发送 pipeline"
+name: "HelpfulAgent"
 
 # pipeline 详细描述
-description: "从网络上获取天气信息，并告知用户"
+description: "获取 word 文档信息并写入 excel"
 
 # pipeline 所执行的任务
-task: "打开文档 test.docx, 并在其中输入 Hello World"
+task: ""
+
+# pipeline 最大执行步数
+max_step: 100
 
 # 为了完成任务的计划，通过调用 group 完成任务
 group_pipline:
-  - tbot_group: "agent_network/config/Template/group.yaml"
+  - TBotGroup: "agent_network/config/Template/group/TBotGroup.yaml"
+  - CodeExecutionGroup: "agent_network/config/Template/group/CodeExecutionGroup.yaml"
 
 # 任务执行过程中的上下文信息（如返回值等），用于 group 之间的信息传递
 context:
-  task: ""
-  plan: ""
-  cur_action: ""
-  history_actions:
-  variable_memory:
-  error: ""
-  code:
+  - name: "task"
+    type: "str"
+  - name: "code"
+    type: "list"
+  - name: "variables"
+    type: "list"
+  - name: "completed_tasks"
+    type: "list"
+  - name: "error"
+    type: "str"

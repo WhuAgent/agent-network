@@ -1,100 +1,88 @@
-import importlib
-import json
+from agent_network.network.graph import Graph
+from agent_network.network.nodes.graph_node import GroupNode
+from agent_network.network.route import Route
+from agent_network.base import BaseAgentGroup
 import yaml
+import agent_network.pipeline.context as ctx
 
-from agent_network.pipeline.config.config_loader import AgentConfig, GroupConfig
-from agent_network.pipeline.node import Node, GroupNode, TaskNode
-from agent_network.base import BaseGroup
-import os
+from datetime import timedelta
 
 
 class Pipeline:
-    def __init__(self, config_file_path, logger):
-        with open(config_file_path, "r", encoding="UTF-8") as f:
-            self.config = yaml.safe_load(f)
+    def __init__(self, task, config, logger):
+        self.task = task
+        self.config = config
         self.logger = logger
         self.nodes = []
-        self.global_context = self.config["context"]
-        self.load()
+        self.execution_cost_history = []
 
-    def load(self):
-        configs = []
+        for item in self.config["context"]:
+            if item["type"] == "str":
+                ctx.register(item["name"], self.task if item["name"] == "task" else "")
+            elif item["type"] == "list":
+                ctx.register(item["name"], [])
+
+
+    def load_graph(self, graph):
+        # 加载节点
         for group in self.config["group_pipline"]:
             group_name, group_config_path = list(group.items())[0]
-            self.nodes.append(BaseGroup(group_config_path, self.logger, self.global_context))
-        # for root, dirs, files in os.walk(self.config_dir):
-        #     for dir in dirs:
-        #         if dir.endswith("Agent"):
-        #             agent_group_config = {}
-        #             groups_config = {}
-        #             agent_dir_path = os.path.join(root, dir)
-        #             config_files = os.listdir(agent_dir_path)
-        #             files = [file for file in config_files if os.path.isfile(os.path.join(agent_dir_path, file))]
-        #             for file in files:
-        #                 if file == "AgentConfig.json":
-        #                     with open(os.path.join(agent_dir_path, file), "r",
-        #                               encoding="utf-8") as ap:
-        #                         agent_configs_dict = json.load(ap)
-        #                         agent_group_config['name'] = agent_configs_dict['name']
-        #                         agent_group_config['task'] = agent_configs_dict['task']
-        #                         agent_group_config['loadType'] = agent_configs_dict['loadType']
-        #                         if agent_group_config['loadType'] == 'module':
-        #                             if 'loadModule' in agent_configs_dict:
-        #                                 agent_group_config['loadModule'] = agent_configs_dict['loadModule']
-        #                             else:
-        #                                 raise Exception(f'loadModule do not exist with config: {agent_configs_dict}')
-        #                         agent_configs = agent_configs_dict['agents']
-        #                         agent_group_config['agents'] = [AgentConfig.agent_decoder(agent_config)
-        #                                                         for agent_config in agent_configs]
-        #                 if "GroupConfig.json" == file:
-        #                     with open(os.path.join(agent_dir_path, file), "r",
-        #                               encoding="utf-8") as gp:
-        #                         group_configs_dict = json.load(gp)
-        #                         groups_config['groups'] = [GroupConfig.group_decoder(group_config)
-        #                                                    for group_config in group_configs_dict['groups']]
-        #                         groups_config['name'] = group_configs_dict['name']
-        #                         groups_config['task'] = group_configs_dict['task']
-        #             configs.append({"agent_config": agent_group_config, "group_config": groups_config})
-        # return configs
+            with open(group_config_path, "r", encoding="utf-8") as f:
+                configs = yaml.safe_load(f)
+                graph.add_node(group_name,
+                               GroupNode(BaseAgentGroup(graph, configs, self.logger),
+                                         configs["params"],
+                                         configs["results"]))
+        
+        return graph
+    
+    def load_route(self, graph: Graph, route: Route):
+        for node_name, node_instance in graph.nodes.items():
+            route.register_node(node_name, node_instance.description)
 
-    def design_agent_group(self, agent_group_config: dict) -> [Node]:
-        nodes = []
-        if agent_group_config['loadType'] == 'module':
-            load_module = importlib.import_module(agent_group_config['loadModule'])
-            for agent_config in agent_group_config['agents']:
-                agent_class = getattr(load_module, agent_config.name)
-                agent_instance = agent_class(self.logger, agent_config.title, agent_config.task, agent_config.role,
-                                             agent_config.description, agent_config.history_number,
-                                             agent_config.prompts,
-                                             agent_config.tools, agent_config.runtime_revision_number,
-                                             **agent_config.init_extra_params
-                                             )
-                agent_children = None
-                if agent_config.if_leaf and agent_config.children and len(agent_config.children) > 0:
-                    agent_children = [self.design_agent_group(child) for child in agent_config.children]
-                agent_node = Node(agent_instance, agent_children)
-                nodes.append(agent_node)
-        return nodes
+        for item in graph.routes:
+            route.register_contact(item["source"], item["target"], item["message_type"])
+        
+        return route
+    def execute(self, graph: Graph, route: Route, task: str):
+        # 加载任务节点
+        graph = self.load_graph(graph)
+        # 加载路由
+        route = self.load_route(graph, route)
+        # TODO 由感知层根据任务激活决定触发哪些 Agent，现在默认所有 Group 都多线程执行 current_task
+        node = self.config["start_node"]
+        message = task
+        step_count = 0
+        max_step = self.config.get("max_step", 100)
+        while message != "COMPLETE":
+            result, next_node, usage_info = graph.execute(node, message, graph_next_executors=route.get_contactions(node))
+            self.execution_cost_history.append(usage_info)
+            next_node, message = route.forward_message(node, next_node, result)
+            node = next_node
+            
+            step_count += 1
+            if step_count > max_step:
+                raise Exception("Max step reached, Task Failed!")
+        return result
+    
+    def count_cost(self):
+        total_time = timedelta()
+        total_llm_cost = 0
+        for item in self.execution_cost_history:
+            total_time += item["time"]
+            for llm_usage in item["llm_usage_history"]:
+                total_llm_cost += llm_usage.total_cost
+        return total_time.total_seconds(), total_llm_cost
 
-    def forward(self, current_task):
-        for node in self.nodes:
-            node.forward(current_task=current_task)
-        # configs = self.load()
-        # agents_configs = [config["agent_config"] for config in configs]
-        # candidate_nodes: dict[str, Node] = {}
-        # candidate_task_nodes: [Node] = []
-        # for agents_config in agents_configs:
-        #     nodes = self.design_agent_group(agents_config)
-        #     candidate_nodes[agents_config["name"]] = GroupNode(nodes, agents_config["name"], agents_config["task"])
-        #
-        # groups_configs = [config["group_config"] for config in configs]
-        # for groups_config in groups_configs:
-        #     candidate_group_nodes: dict[str, [Node]] = {}
-        #     for group in groups_config["groups"]:
-        #         if group["agentsRef"] in candidate_task_nodes:
-        #             if group["name"] not in candidate_group_nodes:
-        #                 candidate_group_nodes[group["name"]] = []
-        #                 candidate_group_nodes[group["name"]].append(candidate_task_nodes[group["agentsRef"]])
-        #     candidate_task_nodes.append(TaskNode(candidate_group_nodes.values(), groups_config["name"], groups_config["task"]))
-        # for candidate_task_node in candidate_task_nodes:
-        #     candidate_task_node.execute(candidate_task_node.task)
+    @staticmethod
+    def retrieve_result(key):
+        return ctx.retrieve_global(key)
+
+    @staticmethod
+    def retrieve_results():
+        return ctx.retrieve_global_all()
+
+    @staticmethod
+    def release():
+        ctx.release()
+        ctx.release_global()
