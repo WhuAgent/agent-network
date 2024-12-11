@@ -24,10 +24,10 @@ class Graph(Executable):
     def execute(self, node, message, **kwargs):
         current_ctx = ctx.retrieve_global_all()
         ctx.shared_context(current_ctx)
-        result, next_execution = self.nodes.get(node).execute(message, **kwargs)
+        result, next_execution, usage_info = self.nodes.get(node).execute(message, **kwargs)
         ctx.registers_global(ctx.retrieves([result["name"] for result in self.results] if self.results else []))
         
-        return result, next_execution
+        return result, next_execution, usage_info
 
     def add_node(self, name, node: Executable):
         if name not in self.nodes:

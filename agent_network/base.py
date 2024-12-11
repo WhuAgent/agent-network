@@ -7,6 +7,7 @@ from agent_network.network.nodes.graph_node import AgentNode
 from datetime import datetime
 import yaml
 from agent_network.network.executable import Executable
+from agent_network.utils.llm import chat_llm
 import agent_network.pipeline.context as ctx
 from abc import abstractmethod
 
@@ -29,8 +30,8 @@ class BaseAgent(Executable):
         self.results = self.config["results"]
 
         self.model = self.config["model"]
-        self.prompts = self.config["prompts"]
-        self.tools = self.config["tools"]
+        self.prompts = self.config.get("prompts")
+        self.tools = self.config.get("tools")
         self.logger = logger
         self.if_error = False
         self.error = None
@@ -50,9 +51,8 @@ class BaseAgent(Executable):
         })
         self.log(role, content, self.__class__.__name__)
 
-    @abstractmethod
     def initial_messages(self):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def forward(self, message, **kwargs):
@@ -60,32 +60,18 @@ class BaseAgent(Executable):
         return results
 
     def execute(self, current_task, **kwargs):
-        begin_t = datetime.now()
-        results = self.forward(current_task, **kwargs)
-        end_t = datetime.now()
-        # self.cost_history.append(
-        #     f"需求: {self.task if not current_task else current_task + '父需求:' + self.task}, 花费时间: {str(end_t - begin_t)}")
-        # if not current_task:
-        #     self.log(self.name, self.cost_history)
-        #     self.log(self.name, f"总花费时间: {end_t - begin_t}")
-        #     self.log(self.name, [
-        #         f"'completion_tokens': {usage.completion_tokens}, 'prompt_tokens': {usage.prompt_tokens}, 'total_tokens': {usage.total_tokens}"
-        #         for usage in self.usages])
-        #     usage_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
-        #     for usage in self.usages:
-        #         usage_total_map["completion_tokens"] += usage.completion_tokens
-        #         usage_total_map["prompt_tokens"] += usage.prompt_tokens
-        #         usage_total_map["total_tokens"] += usage.total_tokens
-        #     self.log(self.name, f"需求: {self.task}, 花费token: {usage_total_map}")
-        return results
-
+        return self.forward(current_task, **kwargs)
+    def chat_llm(self, model, message):
+        response, usage = chat_llm(model, message)
+        self.cur_execution_cost["llm_usage_history"].append(usage)
+        return response
+    
     def log(self, role, content, class_name=None):
         if class_name is None:
             class_name = self.name
         cur_time = datetime.now()
         if not isinstance(content, str):
             content = json.dumps(content, indent=4, ensure_ascii=False)
-        # print(content)
         self.logger.log(cur_time, role, content, class_name=class_name)
 
     def log_messages(self, messages):

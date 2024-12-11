@@ -5,6 +5,8 @@ from agent_network.base import BaseAgentGroup
 import yaml
 import agent_network.pipeline.context as ctx
 
+from datetime import timedelta
+
 
 class Pipeline:
     def __init__(self, task, config, logger):
@@ -12,6 +14,7 @@ class Pipeline:
         self.config = config
         self.logger = logger
         self.nodes = []
+        self.execution_cost_history = []
 
         for item in self.config["context"]:
             if item["type"] == "str":
@@ -49,11 +52,27 @@ class Pipeline:
         # TODO 由感知层根据任务激活决定触发哪些 Agent，现在默认所有 Group 都多线程执行 current_task
         node = self.config["start_node"]
         message = task
+        step_count = 0
+        max_step = self.config.get("max_step", 100)
         while message != "COMPLETE":
-            result, next_node = graph.execute(node, message, graph_next_executors=route.get_contactions(node))
+            result, next_node, usage_info = graph.execute(node, message, graph_next_executors=route.get_contactions(node))
+            self.execution_cost_history.append(usage_info)
             next_node, message = route.forward_message(node, next_node, result)
             node = next_node
+            
+            step_count += 1
+            if step_count > max_step:
+                raise Exception("Max step reached, Task Failed!")
         return result
+    
+    def count_cost(self):
+        total_time = timedelta()
+        total_llm_cost = 0
+        for item in self.execution_cost_history:
+            total_time += item["time"]
+            for llm_usage in item["llm_usage_history"]:
+                total_llm_cost += llm_usage.total_cost
+        return total_time.total_seconds(), total_llm_cost
 
     @staticmethod
     def retrieve_result(key):
