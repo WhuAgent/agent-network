@@ -12,9 +12,9 @@ class Executable:
     def execute(self, input_content, **kwargs):
         pass
 
-    def add_message(self, role, content, messages: []):
+    @abstractmethod
+    def release(self):
         pass
-
 
 class ParameterizedExecutable(Executable):
     def __init__(self, name, task, description, params, results):
@@ -25,4 +25,8 @@ class ParameterizedExecutable(Executable):
 
     @abstractmethod
     def execute(self, input_content, **kwargs):
+        pass
+
+    @abstractmethod
+    def release(self):
         pass

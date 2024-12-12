@@ -1,3 +1,4 @@
+import uuid
 from agent_network.network.graph import Graph
 from agent_network.network.nodes.graph_node import GroupNode
 from agent_network.network.route import Route
@@ -8,18 +9,25 @@ import agent_network.pipeline.context as ctx
 
 
 class Pipeline:
-    def __init__(self, task, config, logger):
+    def __init__(self, task, config, logger, id=None):
         self.task = task
         self.config = config
         self.logger = logger
         self.nodes = []
         self.turn = 0
+        if id is None:
+            self.id = uuid.uuid4()
+        else:
+            self.id = id
 
         for item in self.config["context"]:
             if item["type"] == "str":
                 ctx.register(item["name"], self.task if item["name"] == "task" else "")
             elif item["type"] == "list":
                 ctx.register(item["name"], [])
+        self.total_time = 0
+        self.usage_token_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
+        ctx.register_pipeline(id, self)
 
     def load_graph(self, graph):
         # 加载节点
@@ -80,15 +88,20 @@ class Pipeline:
         self.execute_graph(graph, route, next_nodes)
         return ctx.retrieve_global_all()
 
-    @staticmethod
-    def retrieve_result(key):
+    def register_time_cost(self, time_cost):
+        self.total_time += time_cost
+
+    def retrieve_result(self, key):
         return ctx.retrieve_global(key)
 
-    @staticmethod
-    def retrieve_results():
+    def retrieve_results(self):
         return ctx.retrieve_global_all()
 
-    @staticmethod
-    def release():
+    def release(self):
+        self.logger.log("Agent-Network", f"TOKEN TOTAL: completion_tokens: {self.usage_token_total_map['completion_tokens']}, 'prompt_tokens': {self.usage_token_total_map['prompt_tokens']}, 'total_tokens': {self.usage_token_total_map['total_tokens']}", self.id)
+        self.logger.log("Agent-Network", f"TIME COST TOTAL: {self.total_time}", self.id)
+        self.logger.log("Agent-Network", f"pipeline: {self.id} has been released")
         ctx.release()
         ctx.release_global()
+        self.total_time = 0
+        self.usage_token_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}

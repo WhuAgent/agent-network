@@ -47,3 +47,7 @@ class Node(ParameterizedExecutable):
         if ctx.retrieve("graph_error_message"):
             ctx.delete("graph_error_message")
         return results, next_executors
+
+    def release(self):
+        if self.executable is not None:
+            return self.executable.release()
