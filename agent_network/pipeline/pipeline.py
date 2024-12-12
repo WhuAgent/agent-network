@@ -14,7 +14,7 @@ class Pipeline:
         self.config = config
         self.logger = logger
         self.nodes = []
-        self.turn = 0
+        self.step = 0
         if id is None:
             self.id = uuid.uuid4()
         else:
@@ -50,7 +50,7 @@ class Pipeline:
         graph.route = route
 
     def load(self, graph: Graph, route: Route):
-        if self.turn == 0:
+        if self.step == 0:
             self.load_graph(graph)
             self.load_route(graph, route)
 
@@ -63,7 +63,10 @@ class Pipeline:
             self.load(graph, route)
         if nodes is None or len(nodes) == 0:
             return
-        self.turn += 1
+        self.step += 1
+        max_step = self.config.get("max_step", 100)
+        if self.step > max_step:
+            raise Exception("Max step reached, Task Failed!")
         if context:
             ctx.registers(context)
         # TODO 由感知层根据任务激活决定触发哪些 Agent，现在默认线性执行所有 TaskNode

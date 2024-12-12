@@ -26,8 +26,8 @@ class BaseAgent(Executable):
         self.results = self.config["results"]
 
         self.model = self.config["model"]
-        self.prompts = self.config["prompts"]
-        self.tools = self.config["tools"]
+        self.prompts = self.config.get("prompts")
+        self.tools = self.config.get("tools")
         self.logger = logger
         self.if_error = False
         self.error = None
@@ -65,9 +65,8 @@ class BaseAgent(Executable):
                 messages.append({"role": history_action["role"], "content": history_action["content"]})
         return messages
 
-    @abstractmethod
     def initial_messages(self):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def forward(self, message, **kwargs):
@@ -82,12 +81,6 @@ class BaseAgent(Executable):
         time_cost = end_t - begin_t
         self.time_costs.append(time_cost)
         ctx.register_time(self.name, time_cost)
-        # usage_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
-        # for usage in self.usages:
-        #     usage_total_map["completion_tokens"] += usage.completion_tokens
-        #     usage_total_map["prompt_tokens"] += usage.prompt_tokens
-        #     usage_total_map["total_tokens"] += usage.total_tokens
-        # self.log(self.name, f"需求: {self.task}, 花费token: {usage_total_map}")
         return results
 
     def chat_llm(self, messages):

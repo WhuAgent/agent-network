@@ -8,6 +8,11 @@ class Executable:
         self.task = task
         self.description = description
 
+        self.cur_execution_cost = {
+            "time": 0,
+            "llm_usage_history": []
+        }
+
     @abstractmethod
     def execute(self, input_content, **kwargs):
         pass

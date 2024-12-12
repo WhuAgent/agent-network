@@ -16,7 +16,10 @@ class Logger:
         self.file_path = os.path.join(self.log_dir, self.file_name)
 
     def log(self, cur_time, role="", content="", class_name="", output=True):
-        buffer = f"[{cur_time}]"
+        if not isinstance(content, str):
+            content = json.dumps(content, indent=4, ensure_ascii=False)
+        buffer = "---------------------------------------------------\n"
+        buffer += f"[{cur_time}]"
         if class_name:
             buffer += f"[{class_name}]"
         if role:
