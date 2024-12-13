@@ -12,10 +12,12 @@ class Logger:
             os.makedirs(self.log_dir)
         self.root = root
         self.prefix = prefix
-        self.file_name = f"{prefix}-{self.start_time}.txt" if prefix else f"{self.start_time}.txt"
+        self.file_name = f"{prefix}-{self.start_time}.log" if prefix else f"{self.start_time}.log"
         self.file_path = os.path.join(self.log_dir, self.file_name)
 
-    def log(self, cur_time, role="", content="", class_name="", output=True):
+    def log(self, role="", content="", class_name="", output=True, cur_time=None):
+        if cur_time is None:
+            cur_time = datetime.now().timestamp()
         if not isinstance(content, str):
             content = json.dumps(content, indent=4, ensure_ascii=False)
         buffer = "---------------------------------------------------\n"

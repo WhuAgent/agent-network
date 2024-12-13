@@ -1,22 +1,21 @@
 from abc import abstractmethod
+from datetime import datetime
 
 
 class Executable:
+    # todo delete task
     def __init__(self, name, task, description):
         self.name = name
         self.task = task
         self.description = description
-
-        self.cur_execution_cost = {
-            "time": 0,
-            "llm_usage_history": []
-        }
+        self.create_time = datetime.now().timestamp()
 
     @abstractmethod
     def execute(self, input_content, **kwargs):
         pass
 
-    def add_message(self, role, content):
+    @abstractmethod
+    def release(self):
         pass
 
 
@@ -29,4 +28,8 @@ class ParameterizedExecutable(Executable):
 
     @abstractmethod
     def execute(self, input_content, **kwargs):
+        pass
+
+    @abstractmethod
+    def release(self):
         pass

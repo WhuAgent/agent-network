@@ -1,10 +1,7 @@
-from abc import abstractmethod
-from datetime import datetime
-
 from agent_network.network.executable import Executable, ParameterizedExecutable
 import agent_network.pipeline.context as ctx
-
 from agent_network.exceptions import RetryError, ReportError
+
 
 class Node(ParameterizedExecutable):
     def __init__(self, executable: Executable, params, results):
@@ -13,58 +10,45 @@ class Node(ParameterizedExecutable):
         self.task = executable.task
         self.description = executable.description
         self.executable = executable
-        self.next_excutions = []
+        # todo 移除防止资源竞争
+        self.next_executables: [str] = []
 
-    def add_route(self, target, message_type):
-        self.route.add_contact(target, message_type)
-
-    def add_message(self, role, content):
-        self.executable.add_message(role, content)
-
-    def execute(self, input_content, retry=False, **kwargs):
+    def execute(self, input_content, **kwargs):
         kwargs.update(ctx.retrieves([param["name"] for param in self.params]))
         if error_message := ctx.retrieve("graph_error_message"):
             kwargs["graph_error_message"] = error_message
-        
-        try:
-            if not retry:
-                self.executable.cur_execution_cost = {
-                    "time": 0,
-                    "llm_usage_history": []
-                }
-                begin_t = datetime.now()
 
+        try:
             results = self.executable.execute(input_content, **kwargs)
-            defalut_next_executor = self.next_excutions[0] if len(self.next_excutions) > 0 else None
-            next_executor = results.get("next_agent", defalut_next_executor)
+            default_next_executors = [exe for exe in self.next_executables] if len(self.next_executables) > 0 else None
+            next_executors = [results.get("next_agent")] if results.get(
+                "next_agent") is not None else default_next_executors
+            self.next_executables.clear()
         except RetryError as e:
             if kwargs.get("graph_error_message"):
                 kwargs["graph_error_message"].append(e.message)
             else:
                 kwargs["graph_error_message"] = [e.message]
             if len(kwargs["graph_error_message"]) < 5:
-                results, next_executor = self.execute(input_content, retry=True, **kwargs)
+                results, next_executors = self.execute(input_content, **kwargs)
             else:
-                raise Exception("Task Failed")
+                raise Exception(e, "Task Failed")
         except ReportError as e:
             results = e.error_message
-            next_executor = e.next_node
-            ctx.register("graph_error_message", [results])
+            next_executors = [e.next_node]
+            ctx.register("graph_error_message", results)
+            return results, next_executors
+        except Exception as e:
+            raise Exception(e, "Task Failed")
 
-            end_t = datetime.now()
-            self.executable.cur_execution_cost["time"] = end_t - begin_t
-            return results, next_executor, self.executable.cur_execution_cost
-        
         ctx.registers(results)
         if self.results:
             ctx.registers_global(ctx.retrieves([result["name"] for result in self.results]))
-        
+
         if ctx.retrieve("graph_error_message"):
             ctx.delete("graph_error_message")
+        return results, next_executors
 
-        if not retry:
-            end_t = datetime.now()
-            self.executable.cur_execution_cost["time"] = end_t - begin_t
-            return results, next_executor, self.executable.cur_execution_cost
-        else:
-            return results, next_executor
+    def release(self):
+        if self.executable is not None:
+            return self.executable.release()
