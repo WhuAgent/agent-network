@@ -83,8 +83,8 @@ class Graph(Executable):
                             self.total_time += total_time
                             self.agents_usages_time_history[agent_name] = agent_usages_time
                             self.agents_usages_token_history[agent_name] = agent_usages_token
-                            self.logger.log("Agent-Network-Graph", f"AGENT TOKEN TOTAL: {usage_token_total_map}", self.name)
-                            self.logger.log("Agent-Network-Graph", f"AGENT TIME COST TOTAL: {total_time}", self.name)
+                            self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} TOKEN TOTAL: {usage_token_total_map}", self.name)
+                            self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} TIME COST TOTAL: {total_time}", self.name)
                             self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} has been removed", self.name)
                             self.remove_common(agent_name)
                             removed_nodes.append(agent_name)
@@ -106,8 +106,8 @@ class Graph(Executable):
                             total_usage['prompt_cost'] += agent_total_usage['prompt_cost']
                             total_usage['total_cost'] += agent_total_usage['total_cost']
                             total_time += agent_total_time
-                self.logger.log("Agent-Network-Graph", f"GROUP TOKEN TOTAL: {total_usage}", self.name)
-                self.logger.log("Agent-Network-Graph", f"GROUP TIME COST TOTAL: {total_time}", self.name)
+                self.logger.log("Agent-Network-Graph", f"GROUP: {name} TOKEN TOTAL: {total_usage}", self.name)
+                self.logger.log("Agent-Network-Graph", f"GROUP: {name} TIME COST TOTAL: {total_time}", self.name)
                 self.logger.log("Agent-Network-Graph", f"GROUP: {name} has been removed from graph {self.name}",
                                 self.name)
             elif isinstance(node, AgentNode):
@@ -125,8 +125,8 @@ class Graph(Executable):
                 self.usage_token_total_map["prompt_cost"] += usage_token_total_map["prompt_cost"]
                 self.usage_token_total_map["total_cost"] += usage_token_total_map["total_cost"]
                 self.total_time += total_time
-                self.logger.log("Agent-Network-Graph", f"AGENT TOKEN TOTAL: {usage_token_total_map}", self.name)
-                self.logger.log("Agent-Network-Graph", f"AGENT TIME COST TOTAL: {total_time}", self.name)
+                self.logger.log("Agent-Network-Graph", f"AGENT: {name} TOKEN TOTAL: {usage_token_total_map}", self.name)
+                self.logger.log("Agent-Network-Graph", f"AGENT: {name} TIME COST TOTAL: {total_time}", self.name)
                 self.logger.log("Agent-Network-Graph", f"AGENT: {name} has been removed from graph {self.name}",
                                 self.name)
             self.remove_common(name)
