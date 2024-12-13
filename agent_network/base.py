@@ -1,6 +1,6 @@
 import importlib
 import json
-from agent_network.utils.openai_llm import chat_llm, Usage
+from agent_network.utils.openai_llm import chat_llm
 from agent_network.network.graph import Graph
 from agent_network.network.nodes.graph_node import AgentNode
 from datetime import datetime
@@ -80,7 +80,7 @@ class BaseAgent(Executable):
         begin_t = datetime.now().timestamp()
         results = self.forward(current_task, **kwargs)
         end_t = datetime.now().timestamp()
-        self.log("Agent-Network", f"{self.name} time cost: {end_t - begin_t}", self.name)
+        self.log("Agent-Network-Agent", f"{self.name} time cost: {end_t - begin_t}", self.name)
         time_cost = end_t - begin_t
         self.time_costs.append(UsageTime(begin_t, time_cost))
         ctx.register_time(self.name, time_cost)
@@ -95,18 +95,18 @@ class BaseAgent(Executable):
                            'completion_cost': usage.completion_cost, 'prompt_cost': usage.prompt_cost}
         self.usages.append(UsageToken(time_chat_begin, usage_token_map))
         ctx.register_usage(usage_token_map)
-        self.log("Agent-Network", f"TOKEN STEP: {usage_token_map}", self.name)
-        if len(self.history_action) >= self.keep_history_num:
+        self.log("Agent-Network-Agent", f"TOKEN STEP: {usage_token_map}", self.name)
+        if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
             self.history_action.pop(0)
         self.history_action.append({"role": response.role, "content": str(response.content)})
+        return response
 
     def log(self, role, content, class_name=None):
         if class_name is None:
             class_name = self.name
-        cur_time = datetime.now().timestamp()
         if not isinstance(content, str):
             content = json.dumps(content, indent=4, ensure_ascii=False)
-        self.logger.log(cur_time, role, content, class_name=class_name)
+        self.logger.log(role, content, class_name=class_name)
 
     def log_messages(self, messages):
         for message in messages:
@@ -122,10 +122,10 @@ class BaseAgent(Executable):
             usage_token_total_map["prompt_cost"] += usage.prompt_cost
             usage_token_total_map["completion_cost"] += usage.completion_cost
             usage_token_total_map["total_cost"] += usage.total_cost
-        self.log("Agent-Network", f"TOKEN TOTAL: {usage_token_total_map}", self.name)
+        self.log("Agent-Network-Agent", f"TOKEN TOTAL: {usage_token_total_map}", self.name)
         total_time = sum([usage_time.usage_time for usage_time in self.time_costs])
-        self.log("Agent-Network", f"TIME COST TOTAL: {total_time}", self.name)
-        self.logger.log("Agent-Network", f"agent: {self.name} has been released")
+        self.log("Agent-Network-Agent", f"TIME COST TOTAL: {total_time}", self.name)
+        self.log("Agent-Network-Agent", f"agent: {self.name} has been released")
         return self.usages, self.time_costs
 
 
@@ -199,7 +199,11 @@ class BaseAgentGroup(Executable):
         group_agent_list = self.agents[name]
         self.current_agents_name.remove(name)
         group_agent_list[len(group_agent_list) - 1].end_timestamp = datetime.now().timestamp()
-        self.logger.log("Agent-Network", f"agent: {name} has been removed from group: {self.name}", self.name)
+        self.logger.log("Agent-Network-Group", f"agent: {name} has been removed from group: {self.name}", self.name)
+
+    def remove_agent_if_exist(self, name):
+        if name in list(self.current_agents_name):
+            self.remove_agent(name)
 
     def release(self):
         # for agent in self.agents:

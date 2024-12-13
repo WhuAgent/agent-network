@@ -22,3 +22,7 @@ class Network(Executable):
     def get_graph(self, name):
         assert name in self.graphs, f"network: {self.name} does not have graph named: {name}"
         return self.graphs[name]
+
+    def release(self):
+        for graph_name, graph in self.graphs.items():
+            graph.release()
