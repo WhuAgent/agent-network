@@ -26,7 +26,10 @@ class Pipeline:
             elif item["type"] == "list":
                 ctx.register(item["name"], [])
         self.total_time = 0
-        self.usage_token_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
+        self.usage_token_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0,
+                                      "completion_cost": 0,
+                                      "prompt_cost": 0,
+                                      "total_cost": 0}
         ctx.register_pipeline(id, self)
 
     def load_graph(self, graph):
@@ -56,7 +59,8 @@ class Pipeline:
 
     def execute(self, graph: Graph, route: Route, task: str, context=None):
         self.load(graph, route)
-        return self.execute_graph(graph, route, [TaskNode(graph.get_node(self.config["start_node"]), task)], context, True)
+        return self.execute_graph(graph, route, [TaskNode(graph.get_node(self.config["start_node"]), task)], context,
+                                  True)
 
     def execute_graph(self, graph: Graph, route: Route, nodes: [TaskNode], context=None, skip_load=False):
         if not skip_load:
@@ -101,10 +105,15 @@ class Pipeline:
         return ctx.retrieve_global_all()
 
     def release(self):
-        self.logger.log("Agent-Network", f"TOKEN TOTAL: completion_tokens: {self.usage_token_total_map['completion_tokens']}, 'prompt_tokens': {self.usage_token_total_map['prompt_tokens']}, 'total_tokens': {self.usage_token_total_map['total_tokens']}", self.id)
+        self.logger.log("Agent-Network",
+                        f"TOKEN TOTAL: {self.usage_token_total_map}",
+                        self.id)
         self.logger.log("Agent-Network", f"TIME COST TOTAL: {self.total_time}", self.id)
         self.logger.log("Agent-Network", f"pipeline: {self.id} has been released")
         ctx.release()
         ctx.release_global()
         self.total_time = 0
-        self.usage_token_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
+        self.usage_token_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0,
+                                      "completion_cost": 0,
+                                      "prompt_cost": 0,
+                                      "total_cost": 0}

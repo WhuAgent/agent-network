@@ -17,11 +17,12 @@ class Node(ParameterizedExecutable):
         kwargs.update(ctx.retrieves([param["name"] for param in self.params]))
         if error_message := ctx.retrieve("graph_error_message"):
             kwargs["graph_error_message"] = error_message
-        
+
         try:
             results = self.executable.execute(input_content, **kwargs)
             default_next_executors = [exe for exe in self.next_executables] if len(self.next_executables) > 0 else None
-            next_executors = [results.get("next_agent")] if results.get("next_agent") is not None else default_next_executors
+            next_executors = [results.get("next_agent")] if results.get(
+                "next_agent") is not None else default_next_executors
             self.next_executables.clear()
         except RetryError as e:
             if kwargs.get("graph_error_message"):
@@ -39,11 +40,11 @@ class Node(ParameterizedExecutable):
             return results, next_executors
         except Exception as e:
             raise Exception(e, "Task Failed")
-        
+
         ctx.registers(results)
         if self.results:
             ctx.registers_global(ctx.retrieves([result["name"] for result in self.results]))
-        
+
         if ctx.retrieve("graph_error_message"):
             ctx.delete("graph_error_message")
         return results, next_executors

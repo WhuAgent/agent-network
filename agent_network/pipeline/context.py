@@ -21,7 +21,7 @@ def retrieve_global(key):
     else:
         raise Exception(f"global context do not contain key: {key}")
 
-    
+
 def retrieves_global(keys):
     return {key: retrieve_global(key) for key in keys}
 
@@ -114,3 +114,6 @@ def register_usage(usage_token_total_map):
     pipeline.usage_token_total_map["completion_tokens"] += usage_token_total_map["completion_tokens"]
     pipeline.usage_token_total_map["prompt_tokens"] += usage_token_total_map["prompt_tokens"]
     pipeline.usage_token_total_map["total_tokens"] += usage_token_total_map["total_tokens"]
+    pipeline.usage_token_total_map["prompt_cost"] += usage_token_total_map["prompt_cost"]
+    pipeline.usage_token_total_map["completion_cost"] += usage_token_total_map["completion_cost"]
+    pipeline.usage_token_total_map["total_cost"] += usage_token_total_map["total_cost"]
