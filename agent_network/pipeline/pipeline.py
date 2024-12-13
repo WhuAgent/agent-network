@@ -89,7 +89,6 @@ class Pipeline:
                     if message != "COMPLETE":
                         next_nodes.append(TaskNode(graph.get_node(next_executable), message))
             except Exception as e:
-                graph.release()
                 self.release()
                 raise Exception(e)
         self.execute_graph(graph, route, next_nodes)
@@ -106,10 +105,10 @@ class Pipeline:
 
     def release(self):
         self.logger.log("Agent-Network",
-                        f"TOKEN TOTAL: {self.usage_token_total_map}",
+                        f"PIPELINE TOKEN TOTAL: {self.usage_token_total_map}",
                         self.id)
-        self.logger.log("Agent-Network", f"TIME COST TOTAL: {self.total_time}", self.id)
-        self.logger.log("Agent-Network", f"pipeline: {self.id} has been released")
+        self.logger.log("Agent-Network", f"PIPELINE TIME COST TOTAL: {self.total_time}", self.id)
+        self.logger.log("Agent-Network", f"PIPELINE: {self.id} has been released")
         ctx.release()
         ctx.release_global()
         self.total_time = 0

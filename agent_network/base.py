@@ -80,7 +80,7 @@ class BaseAgent(Executable):
         begin_t = datetime.now().timestamp()
         results = self.forward(current_task, **kwargs)
         end_t = datetime.now().timestamp()
-        self.log("Agent-Network-Agent", f"{self.name} time cost: {end_t - begin_t}", self.name)
+        self.log("Agent-Network-Agent", f"AGENT {self.name} time cost: {end_t - begin_t}", self.name)
         time_cost = end_t - begin_t
         self.time_costs.append(UsageTime(begin_t, time_cost))
         ctx.register_time(self.name, time_cost)
@@ -95,7 +95,7 @@ class BaseAgent(Executable):
                            'completion_cost': usage.completion_cost, 'prompt_cost': usage.prompt_cost}
         self.usages.append(UsageToken(time_chat_begin, usage_token_map))
         ctx.register_usage(usage_token_map)
-        self.log("Agent-Network-Agent", f"TOKEN STEP: {usage_token_map}", self.name)
+        self.log("Agent-Network-Agent", f"AGENT TOKEN STEP: {usage_token_map}", self.name)
         if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
             self.history_action.pop(0)
         self.history_action.append({"role": response.role, "content": str(response.content)})
@@ -122,10 +122,10 @@ class BaseAgent(Executable):
             usage_token_total_map["prompt_cost"] += usage.prompt_cost
             usage_token_total_map["completion_cost"] += usage.completion_cost
             usage_token_total_map["total_cost"] += usage.total_cost
-        self.log("Agent-Network-Agent", f"TOKEN TOTAL: {usage_token_total_map}", self.name)
+        self.log("Agent-Network-Agent", f"AGENT TOKEN TOTAL: {usage_token_total_map}", self.name)
         total_time = sum([usage_time.usage_time for usage_time in self.time_costs])
-        self.log("Agent-Network-Agent", f"TIME COST TOTAL: {total_time}", self.name)
-        self.log("Agent-Network-Agent", f"agent: {self.name} has been released")
+        self.log("Agent-Network-Agent", f"AGENT TIME COST TOTAL: {total_time}", self.name)
+        self.log("Agent-Network-Agent", f"AGENT: {self.name} has been released")
         return self.usages, self.time_costs
 
 
@@ -218,5 +218,5 @@ class BaseAgentGroup(Executable):
         #         self.total_time += group_agent_total_time
         # self.logger.log("Agent-Network", f"TOKEN TOTAL: completion_tokens: {self.usage_token_total_map['completion_tokens']}, 'prompt_tokens': {self.usage_token_total_map['prompt_tokens']}, 'total_tokens': {self.usage_token_total_map['total_tokens']}", self.name)
         # self.logger.log("Agent-Network", f"TIME COST TOTAL: {self.total_time}", self.name)
-        # self.logger.log("Agent-Network", f"group: {self.name} has been released")
+        self.logger.log("Agent-Network-Group", f"GROUP: {self.name} has been released")
         return self.usage_token_total_map, self.total_time

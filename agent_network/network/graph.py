@@ -34,13 +34,9 @@ class Graph(Executable):
     def execute(self, node, message, **kwargs):
         current_ctx = ctx.retrieve_global_all()
         ctx.shared_context(current_ctx)
-        try:
-            result, next_executables = self.nodes.get(node).execute(message, **kwargs)
-            ctx.registers_global(ctx.retrieves([result["name"] for result in self.results] if self.results else []))
-            return result, next_executables
-        except Exception as e:
-            self.release()
-            raise Exception(e)
+        result, next_executables = self.nodes.get(node).execute(message, **kwargs)
+        ctx.registers_global(ctx.retrieves([result["name"] for result in self.results] if self.results else []))
+        return result, next_executables
 
     def add_node(self, name, node: Executable):
         if name not in self.nodes:
@@ -51,6 +47,7 @@ class Graph(Executable):
 
     def remove_node(self, name):
         # TODO NEED OPTIMIZE
+        removed_nodes = []
         if name in self.nodes:
             node = self.get_node(name)
             if isinstance(node, GroupNode):
@@ -68,6 +65,8 @@ class Graph(Executable):
                 # 拿曾经拥有过的agent的所有统计数据，输出该group最终的
                 for agent_name in node.executable.agents.keys():
                     agent_node = self.get_node(agent_name)
+                    agent_usages_token = None
+                    agent_usages_time = None
                     if agent_node is not None:
                         agent_usages_token, agent_usages_time = self.get_node(agent_name).release()
                         if agent_name in node.executable.current_agents_name:
@@ -84,29 +83,33 @@ class Graph(Executable):
                             self.total_time += total_time
                             self.agents_usages_time_history[agent_name] = agent_usages_time
                             self.agents_usages_token_history[agent_name] = agent_usages_token
-                            self.logger.log("Agent-Network-Graph", f"TOKEN TOTAL: {usage_token_total_map}", agent_name)
-                            self.logger.log("Agent-Network-Graph", f"TIME COST TOTAL: {total_time}", agent_name)
-                            self.logger.log("Agent-Network-Graph", f"agent: {agent_name} has been removed")
+                            self.logger.log("Agent-Network-Graph", f"AGENT TOKEN TOTAL: {usage_token_total_map}", self.name)
+                            self.logger.log("Agent-Network-Graph", f"AGENT TIME COST TOTAL: {total_time}", self.name)
+                            self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} has been removed", self.name)
+                            self.remove_common(agent_name)
+                            removed_nodes.append(agent_name)
                     else:
-                        agent_usages_token = self.agents_usages_token_history[agent_name]
-                        agent_usages_time = self.agents_usages_time_history[agent_name]
-                    for group_agent in node.executable.agents[agent_name]:
-                        if group_agent.end_timestamp == group_agent.begin_timestamp:
-                            group_agent.separate()
-                        agent_total_usage, agent_total_time = usage_calculate(agent_usages_token, agent_usages_time,
-                                                                              group_agent.begin_timestamp,
-                                                                              group_agent.end_timestamp)
-                        total_usage['completion_tokens'] += agent_total_usage['completion_tokens']
-                        total_usage['prompt_tokens'] += agent_total_usage['prompt_tokens']
-                        total_usage['total_tokens'] += agent_total_usage['total_tokens']
-                        total_usage['completion_cost'] += agent_total_usage['completion_cost']
-                        total_usage['prompt_cost'] += agent_total_usage['prompt_cost']
-                        total_usage['total_cost'] += agent_total_usage['total_cost']
-                        total_time += agent_total_time
-                    self.remove_common(agent_name)
-                self.logger.log("Agent-Network-Graph", f"TOKEN TOTAL: {total_usage}", name)
-                self.logger.log("Agent-Network-Graph", f"TIME COST TOTAL: {total_time}", name)
-                self.logger.log("Agent-Network-Graph", f"group: {self.name} has been removed")
+                        if agent_name in self.agents_usages_time_history and agent_name in self.agents_usages_token_history:
+                            agent_usages_token = self.agents_usages_token_history[agent_name]
+                            agent_usages_time = self.agents_usages_time_history[agent_name]
+                    if agent_usages_token is not None and agent_usages_time is not None:
+                        for group_agent in node.executable.agents[agent_name]:
+                            if group_agent.end_timestamp == group_agent.begin_timestamp:
+                                group_agent.separate()
+                            agent_total_usage, agent_total_time = usage_calculate(agent_usages_token, agent_usages_time,
+                                                                                  group_agent.begin_timestamp,
+                                                                                  group_agent.end_timestamp)
+                            total_usage['completion_tokens'] += agent_total_usage['completion_tokens']
+                            total_usage['prompt_tokens'] += agent_total_usage['prompt_tokens']
+                            total_usage['total_tokens'] += agent_total_usage['total_tokens']
+                            total_usage['completion_cost'] += agent_total_usage['completion_cost']
+                            total_usage['prompt_cost'] += agent_total_usage['prompt_cost']
+                            total_usage['total_cost'] += agent_total_usage['total_cost']
+                            total_time += agent_total_time
+                self.logger.log("Agent-Network-Graph", f"GROUP TOKEN TOTAL: {total_usage}", self.name)
+                self.logger.log("Agent-Network-Graph", f"GROUP TIME COST TOTAL: {total_time}", self.name)
+                self.logger.log("Agent-Network-Graph", f"GROUP: {name} has been removed from graph {self.name}",
+                                self.name)
             elif isinstance(node, AgentNode):
                 for group in self.current_groups_name:
                     group_node = self.get_node(group)
@@ -122,11 +125,14 @@ class Graph(Executable):
                 self.usage_token_total_map["prompt_cost"] += usage_token_total_map["prompt_cost"]
                 self.usage_token_total_map["total_cost"] += usage_token_total_map["total_cost"]
                 self.total_time += total_time
-                self.logger.log("Agent-Network-Graph", f"TOKEN TOTAL: {usage_token_total_map}", name)
-                self.logger.log("Agent-Network-Graph", f"TIME COST TOTAL: {total_time}", name)
-                self.logger.log("Agent-Network-Graph", f"agent: {name} has been removed")
+                self.logger.log("Agent-Network-Graph", f"AGENT TOKEN TOTAL: {usage_token_total_map}", self.name)
+                self.logger.log("Agent-Network-Graph", f"AGENT TIME COST TOTAL: {total_time}", self.name)
+                self.logger.log("Agent-Network-Graph", f"AGENT: {name} has been removed from graph {self.name}",
+                                self.name)
             self.remove_common(name)
-            self.logger.log("Agent-Network-Graph", f"node: {name} has been removed from graph: {self.name}", self.name)
+            removed_nodes.append(name)
+            self.logger.log("Agent-Network-Graph", f"NODE: {name} has been removed from graph: {self.name}", self.name)
+            return removed_nodes
 
     def remove_common(self, name):
         del self.nodes[name]
@@ -134,8 +140,10 @@ class Graph(Executable):
         self.routes = [route for route in self.routes if route["source"] != name and route["target"] != name]
         self.route.deregister_node(name)
 
-    def get_node(self, name) -> Executable:
-        return self.nodes[name]
+    def get_node(self, name) -> Executable | None:
+        if name in self.nodes:
+            return self.nodes[name]
+        return None
 
     def node_exists(self, name):
         return name in self.nodes
@@ -148,11 +156,15 @@ class Graph(Executable):
         })
 
     def release(self):
+        total_removed_nodes = []
         for node in list(self.nodes.keys()):
-            self.remove_node(node)
-        self.logger.log("Agent-Network-Graph", f"TOKEN TOTAL: {self.usage_token_total_map}", self.name)
-        self.logger.log("Agent-Network-Graph", f"TIME COST TOTAL: {self.total_time}", self.name)
-        self.logger.log("Agent-Network-Graph", f"graph: {self.name} has been released")
+            if node in total_removed_nodes:
+                continue
+            removed_nodes = self.remove_node(node)
+            total_removed_nodes.extend(removed_nodes)
+        self.logger.log("Agent-Network-Graph", f"GRAPH TOKEN TOTAL: {self.usage_token_total_map}", self.name)
+        self.logger.log("Agent-Network-Graph", f"GRAPH TIME COST TOTAL: {self.total_time}", self.name)
+        self.logger.log("Agent-Network-Graph", f"GRAPH: {self.name} has been released", self.name)
         self.nodes = {}
         self.routes = []
         self.num_nodes = 0
