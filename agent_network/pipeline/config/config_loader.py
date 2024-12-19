@@ -6,11 +6,12 @@ class PromptsConfig:
         self.type = type
         self.contents = contents
 
+    @staticmethod
+    def prompts_decoder(obj: dict):
+        assert "type" in obj, "Prompt config illegal: Missing type"
+        assert "contents" in obj, "Prompt config illegal: Missing contents"
 
-def prompts_decoder(obj: dict):
-    if 'type' in obj and 'contents' in obj:
         return PromptsConfig(obj['type'], obj['contents'])
-    raise Exception(f'prompt config illegal: {obj}')
 
 
 class ToolsConfig:
@@ -18,11 +19,11 @@ class ToolsConfig:
         self.name = name
         self.type = type
 
-
-def tools_decoder(obj: dict):
-    if 'type' in obj and 'name' in obj:
-        return PromptsConfig(obj['name'], obj['type'])
-    raise Exception(f'tools config illegal: {obj}')
+    @staticmethod
+    def tools_decoder(obj: dict):
+        if 'type' in obj and 'name' in obj:
+            return PromptsConfig(obj['name'], obj['type'])
+        raise Exception(f'tools config illegal: {obj}')
 
 
 class AgentConfig:
@@ -57,11 +58,18 @@ class AgentConfig:
         self.params = params
         self.results = results
 
-
-def agent_decoder(obj: dict):
-    if 'type' in obj and 'description' in obj and 'title' in obj and 'name' in obj and 'ifLeaf' in obj and 'role' in obj \
-            and 'prompts' in obj and 'task' in obj:
-        return AgentConfig(obj['type'], obj['name'], obj['title'], obj['description'], obj['task'], obj['role'],
+    @staticmethod
+    def agent_decoder(obj: dict):
+        assert "type" in obj, "Agent config illegal: Missing type"
+        assert "description" in obj, "Agent config illegal: Missing description"
+        assert "title" in obj, "Agent config illegal: Missing title"
+        assert "name" in obj, "Agent config illegal: Missing name"
+        assert "ifLeaf" in obj, "Agent config illegal: Missing ifLeaf"
+        assert "role" in obj, "Agent config illegal: Missing role"
+        assert "prompts" in obj, "Agent config illegal: Missing prompts"
+        assert "task" in obj, "Agent config illegal: Missing task"
+        return AgentConfig(obj['type'], obj['name'], obj['title'],
+                           obj['description'], obj['task'], obj['role'],
                            obj['ifLeaf'], obj['prompts'],
                            obj['tools'] if 'tools' in obj else None,
                            [agent_decoder(child) for child in obj['children']] if 'children' in obj and len(
@@ -76,7 +84,6 @@ def agent_decoder(obj: dict):
                            obj['params'] if 'params' in obj else None,
                            obj['results'] if 'results' in obj else None,
                            )
-    raise Exception(f'agent config illegal: {obj}')
 
 
 class GroupConfig:
@@ -99,10 +106,14 @@ class GroupConfig:
         self.children = children
         self.agents_ref = agents_ref
 
-
-def group_decoder(obj: dict):
-    if 'description' in obj and 'name' in obj and 'ifLeaf' in obj and 'agentsRef' in obj \
-            and 'prompts' in obj and 'task' in obj:
+    @staticmethod
+    def group_decoder(obj: dict):
+        assert "description" in obj, "Group config illegal: Missing description"
+        assert "name" in obj, "Group config illegal: Missing name"
+        assert "ifLeaf" in obj, "Group config illegal: Missing ifLeaf"
+        assert "agentsRef" in obj, "Group config illegal: Missing agentsRef"
+        assert "prompts" in obj, "Group config illegal: Missing prompts"
+        assert "task" in obj, "Group config illegal: Missing task"
         return GroupConfig(obj['name'], obj['description'], obj['task'], obj['ifLeaf'], obj['agentsRef'],
                            obj['prompts'],
                            obj['tools'] if 'tools' in obj else None,
@@ -115,4 +126,3 @@ def group_decoder(obj: dict):
                            obj['historyNumber'] if 'historyNumber' in obj else None,
                            obj['energy'] if 'energy' in obj else None,
                            )
-    raise Exception(f'group config illegal: {obj}')

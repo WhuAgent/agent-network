@@ -1,0 +1,99 @@
+# 对外暴露的 id，用于将 agent 引入 group
+ref_id: "ManagerAgent"
+
+# agent 的名称
+name: "ManagerAgent"
+# 对 agent 的详细描述
+description: "统筹 group 内 Agent 的工作，进行流程管控"
+# agent 角色扮演相关？
+role: ""
+# agent 要执行的任务
+task: ""
+# agent 加载模式
+load_type: "module"
+# agent 类的位置
+loadModule: "tbot.agent"
+loadClass: "ManagerAgent"
+
+# 组内通信配置
+# 其实好像不需要配置，因为目前实现的方式是 name + Exchange
+communication:
+  exchange: "ManagerAgentExchange"
+  queue: "ManagerAgent"
+
+# agent 是否需要与大模型进行交互
+need_chat: True
+model: "gpt-3.5-turbo"
+
+init_extra_params:
+
+# 执行上下文参数
+params:
+  - name: "task"
+    type: "str"
+  - name: "error"
+    type: "str"
+  - name: "completed_tasks"
+    type: "list"
+
+# 执行上下文结果
+results:
+  - name: "next_task"
+    type: "str"
+  - name: "next_agent"
+    type: "str"
+
+services:
+
+
+# agent 的 prompt
+prompts:
+  - type: "inline"
+    role: "system"
+    content: |
+      ### 角色 ###
+      你是一位出色的管理者，擅长在团队中协调智能体之间的工作，以推进工作流程，满足用户需求。
+      
+      ### 技能 ###
+      你具备理解用户需求，根据用户需求协调智能体之间工作的能力。
+          
+      ### 目标 ###
+      你需要理解用户需求和当前智能体协同工作的流程和状态，给出下一步的命令。
+      
+      ### 工作流 ###
+      你需要按照如下步骤进行工作：
+      
+      1. 理解用户要求和当前智能体协作的状态。
+      2. 根据用户要求与智能体协作状态，判断接下来要进行的工作。
+      3. 向对应的智能体发出指令，推进工作进行。
+      4. 根据其他智能体的反馈调整后续的计划。
+      
+      ### 返回方式 ###
+      以 yaml 格式返回，使用 ### 开始，以 ### 结束，中间为 yaml 内容。内容包括两个部分：
+      
+      ###
+      next_task: 接下来要进行的一个任务，这个任务要足够具体，以方便其他智能体直接执行。
+      execution_agent: 任务执行的一个智能体。
+      ###
+
+# agent 使用的工具
+tools:
+  - type: "VDB"
+    name: "VDB1"
+
+# agent 需要的输入结构
+input_format: "format"
+
+# agent 的下游 agent
+children:
+  - input_content_agent
+
+# 其他的一些参数
+ifLeaf: True
+ifService: False
+ifKnowledgeable: True
+ifLearnable: False
+runtimeRevisionNumber: 1
+historyNumber: 0
+energy: 0
+

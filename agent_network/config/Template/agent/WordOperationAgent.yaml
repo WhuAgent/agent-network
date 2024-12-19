@@ -1,0 +1,119 @@
+# 对外暴露的 id，用于将 agent 引入 group
+ref_id: "WordOperationAgent"
+
+# agent 的名称
+name: "WordOperationAgent"
+# 对 agent 的详细描述
+description: "可以进行 Word 上的基础操作，如打开、保存、关闭文档，进行内容的输入、复制和粘贴等"
+# agent 角色扮演相关？
+role: ""
+# agent 要执行的任务
+task: ""
+# agent 加载模式
+load_type: "module"
+# agent 类的位置
+loadModule: "tbot.agent"
+loadClass: "WordOperationAgent"
+
+# 组内通信配置
+# 其实好像不需要配置，因为目前实现的方式是 name + Exchange
+communication:
+  exchange: "WordOperationAgentExchange"
+  queue: "WordOperationAgent"
+
+# agent 是否需要与大模型进行交互
+need_chat: True
+model: "gpt-3.5-turbo"
+
+init_extra_params:
+
+# 执行上下文参数
+params:
+  - name: "code"
+    type: "list"
+  - name: "variables"
+    type: "list"
+  - name: "completed_tasks"
+    type: "list"
+  - name: "next_task"
+    type: "str"
+
+# 执行上下文结果
+results:
+  - name: "code"
+    type: "list"
+  - name: "variables"
+    type: "list"
+  - name: "completed_tasks"
+    type: "list"
+  - name: "next_agent"
+    type: "str"
+  - name: "error"
+    type: "str"
+
+services:
+  - WordOpenDocument
+  - WordSave
+  - WordCloseDocument
+  - WordSelectAll
+  - WordCopySelectTextContentCommnad
+  - WordPasteSelectTextContentCommnad
+
+# agent 的 prompt
+prompts:
+  - type: "inline"
+    role: "system"
+    content: |
+      ### 角色 ###
+       你是一位专业的文档处理专家，拥有丰富的 Word 文档操作经验和良好的沟通能力，能够与同组的其他 Agent 合作完成任务。
+      
+      ### 技能 ###
+      你具备调用服务操作 Word 文档的能力，可调用的服务如下，以代码形式给出：
+      
+      {services}
+          
+      ### 目标 ###
+      你需要理解用户需求和任务目标，并根据目前的操作环境状态，调用若干个服务，推进任务的进行。
+      
+      ### 工作流 ###
+      你需要按照如下步骤进行工作：
+      
+      1. 理解用户要求和任务目标。
+      2. 根据当前的操作环境状态，决定需要调用的服务。
+      3. 调用该服务推进任务流程。
+      4. 反馈信息。
+      
+      ### 返回方式 ###
+      以 yaml 格式返回，使用 ### 开始，以 ### 结束，中间为 yaml 内容。内容为一个列表，列表的每一项包括三个部分：
+      
+      ###      
+      - name: 要调用的服务的名称
+        args: # 要调用的服务的参数
+          arg_name: arg_value
+        rets: # 服务返回值的配置，是一个列表，每一项包括三个部分
+          - name: 文档中对应的返回值名称
+            var: 生成的代码中，返回值的英文变量名
+            think: 为返回值进行该命名的思考
+      ###
+
+# agent 使用的工具
+tools:
+  - type: "VDB"
+    name: "VDB1"
+
+# agent 需要的输入结构
+input_format: "format"
+
+# agent 的下游 agent
+children:
+  - input_content_agent
+
+# 其他的一些参数
+ifLeaf: True
+ifService: False
+ifKnowledgeable: True
+ifLearnable: False
+runtimeRevisionNumber: 1
+historyNumber: 0
+energy: 0
+

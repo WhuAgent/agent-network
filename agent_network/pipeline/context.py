@@ -1,7 +1,11 @@
 import threading
 
+from agent_network.utils.llm.message import Message
+
 thread_local_data = threading.local()
 global_map = {}
+pipeline_key = "$$$$$Pipeline$$$$$"
+pipeline_id_key = "$$$$$PipelineID$$$$$"
 
 
 def register_global(key, value):
@@ -18,6 +22,10 @@ def retrieve_global(key):
         return global_map.get(key)
     else:
         raise Exception(f"global context do not contain key: {key}")
+
+
+def retrieves_global(keys):
+    return {key: retrieve_global(key) for key in keys}
 
 
 def retrieve_global_all():
@@ -39,16 +47,15 @@ def register(key, value):
 
 
 def registers(params_map):
+    if params_map is None:
+        return
     for key, value in params_map.items():
         register(key, value)
 
 
 def retrieve(key):
     init()
-    if key in thread_local_data.context:
-        return thread_local_data.context.get(key)
-    else:
-        raise Exception(f"context do not contain key: {key}")
+    return thread_local_data.context.get(key)
 
 
 def retrieves(keys):
@@ -68,3 +75,55 @@ def release():
 def shared_context(ctx):
     for key, value in ctx.items():
         register(key, value)
+
+
+def delete(key):
+    thread_local_data.context.pop(key)
+
+
+def register_pipeline(id, pipeline):
+    if retrieve(pipeline_key) is not None or retrieve(pipeline_id_key) is not None:
+        raise Exception("pipeline register duplicated")
+    register(pipeline_key, pipeline)
+    register(pipeline_id_key, id)
+
+
+def retrieve_pipline():
+    pipeline = retrieve(pipeline_key)
+    if pipeline is None:
+        raise Exception("pipeline is not within current context")
+    return pipeline
+
+
+def retrieve_pipline_id():
+    pipeline_id = retrieve(pipeline_id_key)
+    if pipeline_id is None:
+        raise Exception("pipeline id is not within current context")
+    return pipeline_id
+
+
+def register_time(name, time_cost):
+    pipeline = retrieve(pipeline_key)
+    if pipeline is None:
+        raise Exception("pipeline is not in the current context")
+    pipeline.total_time += time_cost
+
+
+def register_llm_action(messages: list[Message]):
+    pipeline = retrieve(pipeline_key)
+    if pipeline is None:
+        raise Exception("pipeline is not in the current context")
+    node = pipeline.cur_execution.cur_executor.name
+
+    for i in range(len(pipeline.node_messages[node]), len(messages)):
+        pipeline.node_messages[node].append(messages[i])
+    
+    for i in range(pipeline.message_num, len(messages)):
+        pipeline.cur_execution.llm_messages.append(messages[i])
+        pipeline.message_num += 1
+    # pipeline.usage_token_total_map["completion_tokens"] += usage_token_total_map["completion_tokens"]
+    # pipeline.usage_token_total_map["prompt_tokens"] += usage_token_total_map["prompt_tokens"]
+    # pipeline.usage_token_total_map["total_tokens"] += usage_token_total_map["total_tokens"]
+    # pipeline.usage_token_total_map["prompt_cost"] += usage_token_total_map["prompt_cost"]
+    # pipeline.usage_token_total_map["completion_cost"] += usage_token_total_map["completion_cost"]
+    # pipeline.usage_token_total_map["total_cost"] += usage_token_total_map["total_cost"]

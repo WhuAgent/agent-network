@@ -6,7 +6,7 @@ setup(
     author="WhuAgent",
     author_email="zhuyuhan2333@whu.edu.cn",
     description="An Agent Self-Organizing Intelligent Network",
-    long_description=open('README.md').read(),
+    long_description=open('README.md', encoding="UTF-8").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/WhuAgent/agent-network.git",
     packages=find_packages(),
