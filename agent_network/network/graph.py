@@ -4,6 +4,7 @@ import threading
 from agent_network.network.route import Route
 from typing import Dict, List
 from agent_network.entity.usage import UsageTime, UsageToken
+from agent_network.network.nodes.node import Node
 from agent_network.network.nodes.graph_node import GroupNode, AgentNode
 from agent_network.utils.stats import *
 
@@ -31,12 +32,12 @@ class Graph(Executable):
         self.agents_usages_time_history: Dict[str, List[UsageTime]] = {}
         self.agents_usages_token_history: Dict[str, List[UsageToken]] = {}
 
-    def execute(self, node, message, **kwargs):
+    def execute(self, node, messages, **kwargs):
         current_ctx = ctx.retrieve_global_all()
         ctx.shared_context(current_ctx)
-        result, next_executables = self.nodes.get(node).execute(message, **kwargs)
+        messages, result, next_executables = self.nodes.get(node).execute(messages, **kwargs)
         ctx.registers_global(ctx.retrieves([result["name"] for result in self.results] if self.results else []))
-        return result, next_executables
+        return messages, result, next_executables
 
     def add_node(self, name, node: Executable):
         if name not in self.nodes:
@@ -140,10 +141,13 @@ class Graph(Executable):
         self.routes = [route for route in self.routes if route["source"] != name and route["target"] != name]
         self.route.deregister_node(name)
 
-    def get_node(self, name) -> Executable | None:
+    def get_node(self, name) -> Node | None:
         if name in self.nodes:
             return self.nodes[name]
         return None
+
+    def get_nodes(self) -> list[Executable]:
+        return list(self.nodes.keys())
 
     def node_exists(self, name):
         return name in self.nodes

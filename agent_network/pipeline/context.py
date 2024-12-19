@@ -1,5 +1,7 @@
 import threading
 
+from agent_network.utils.llm.message import Message
+
 thread_local_data = threading.local()
 global_map = {}
 pipeline_key = "$$$$$Pipeline$$$$$"
@@ -107,13 +109,21 @@ def register_time(name, time_cost):
     pipeline.total_time += time_cost
 
 
-def register_usage(usage_token_total_map):
+def register_llm_action(messages: list[Message]):
     pipeline = retrieve(pipeline_key)
     if pipeline is None:
         raise Exception("pipeline is not in the current context")
-    pipeline.usage_token_total_map["completion_tokens"] += usage_token_total_map["completion_tokens"]
-    pipeline.usage_token_total_map["prompt_tokens"] += usage_token_total_map["prompt_tokens"]
-    pipeline.usage_token_total_map["total_tokens"] += usage_token_total_map["total_tokens"]
-    pipeline.usage_token_total_map["prompt_cost"] += usage_token_total_map["prompt_cost"]
-    pipeline.usage_token_total_map["completion_cost"] += usage_token_total_map["completion_cost"]
-    pipeline.usage_token_total_map["total_cost"] += usage_token_total_map["total_cost"]
+    node = pipeline.cur_execution.cur_executor.name
+
+    for i in range(len(pipeline.node_messages[node]), len(messages)):
+        pipeline.node_messages[node].append(messages[i])
+    
+    for i in range(pipeline.message_num, len(messages)):
+        pipeline.cur_execution.llm_messages.append(messages[i])
+        pipeline.message_num += 1
+    # pipeline.usage_token_total_map["completion_tokens"] += usage_token_total_map["completion_tokens"]
+    # pipeline.usage_token_total_map["prompt_tokens"] += usage_token_total_map["prompt_tokens"]
+    # pipeline.usage_token_total_map["total_tokens"] += usage_token_total_map["total_tokens"]
+    # pipeline.usage_token_total_map["prompt_cost"] += usage_token_total_map["prompt_cost"]
+    # pipeline.usage_token_total_map["completion_cost"] += usage_token_total_map["completion_cost"]
+    # pipeline.usage_token_total_map["total_cost"] += usage_token_total_map["total_cost"]

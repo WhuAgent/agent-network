@@ -1,5 +1,5 @@
 import threading
-from posix import _exit
+from os import _exit
 
 from agent_network.network.route import Route
 from agent_network.pipeline.pipeline import Pipeline
