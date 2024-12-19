@@ -11,6 +11,10 @@ model_cost = {
     "gpt-3.5-turbo": {
         "prompt_token": 0.0035,
         "completion_token": 0.0105
+    },
+    "gpt-4": {
+        "prompt_token": 0.21,
+        "completion_token": 0.42
     }
 }
 

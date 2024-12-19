@@ -1,8 +1,6 @@
 import importlib
 import json
-from agent_network.utils.openai_llm import chat_llm
-from agent_network.network.graph import Graph
-from agent_network.network.nodes.graph_node import AgentNode
+from agent_network.utils.llm.openai import chat_llm
 from datetime import datetime
 import yaml
 from agent_network.network.executable import Executable
@@ -11,6 +9,8 @@ import agent_network.pipeline.context as ctx
 from agent_network.entity.usage import UsageToken, UsageTime
 from agent_network.entity.group_agent import GroupAgent
 from typing import List, Dict
+
+from agent_network.utils.llm.message import SystemMessage, UserMessage, AssistantMessage
 
 
 class BaseAgent(Executable):
@@ -25,8 +25,8 @@ class BaseAgent(Executable):
         self.role = self.config["role"]
         self.description = self.config["description"]
 
-        self.params = self.config["params"]
-        self.results = self.config["results"]
+        self.params = self.config.get("params")
+        self.results = self.config.get("results")
 
         self.model = self.config["model"]
         self.prompts = self.config.get("prompts")
@@ -48,58 +48,80 @@ class BaseAgent(Executable):
         self.usages: List[UsageToken] = []
         self.time_costs: List[UsageTime] = []
 
-        self.system_message = self.initial_messages()
+        self.system_message = self.initial_system_message()
 
+    def initial_system_message(self):
+        for message in self.config.get("prompts", []):
+            if message["type"] == "inline" and message["role"] == "system":
+                self.log("system", message["content"])
+                return SystemMessage(message["content"])
+            
+    def get_system_message(self):
+        return self.system_message
+
+    def append_message(self, role, content, messages):
+        if role == "system":
+            messages.append(SystemMessage(content))
+        elif role == "user":
+            messages.append(UserMessage(content))
+        elif role == "assistant":
+            messages.append(AssistantMessage(content))
+        else:
+            raise Exception("unknown message type")
+    
     def add_message(self, role, content, messages=None):
         if messages is None:
             messages = []
-        if not (len(messages) > 0 and messages[0]["role"] == "system"):
+        if not (len(messages) > 0 and isinstance(messages[0], SystemMessage)) and self.system_message:
             messages.insert(0, self.system_message)
-            self.log("system", self.system_message["content"], self.__class__.__name__)
-        messages.append({
-            "role": role,
-            "content": content
-        })
+            self.log("system", self.system_message.content, self.__class__.__name__)
+        self.append_message(role, content, messages)
+        # messages.append({
+        #     "role": role,
+        #     "content": content
+        # })
         self.log(role, content)
         if self.append_history_num > 0:
             for i in range(min(self.append_history_num, len(self.history_action))):
-                messages.append({"role": "system", "content": f"The {i + 1}th historical records:\n"})
+                self.append_message("system", f"{i + 1}th historical records:\n", messages)
+                # messages.append({"role": "system", "content": f"The {i + 1}th historical records:\n"})
                 history_action = self.history_action[len(self.history_action) - self.append_history_num + i]
-                messages.append({"role": history_action["role"], "content": history_action["content"]})
+                self.append_message(history_action["role"], history_action["content"], messages)
+                # messages.append({"role": history_action["role"], "content": history_action["content"]})
         return messages
 
-    def initial_messages(self):
-        pass
-
     @abstractmethod
-    def forward(self, message, **kwargs):
+    def forward(self, messages, **kwargs):
         results = dict()
-        return results
+        return messages, results
 
-    def execute(self, current_task, **kwargs):
+    def execute(self, messages, **kwargs):
         begin_t = datetime.now().timestamp()
-        results = self.forward(current_task, **kwargs)
+        messages, results = self.forward(messages, **kwargs)
         end_t = datetime.now().timestamp()
         self.log("Agent-Network-Agent", f"AGENT {self.name} time cost: {end_t - begin_t}", self.name)
         time_cost = end_t - begin_t
         self.time_costs.append(UsageTime(begin_t, time_cost))
         ctx.register_time(self.name, time_cost)
-        return results
+        return messages, results
 
     def chat_llm(self, messages):
         # todo 该时间不精准，应该取execute的开始时间
         time_chat_begin = datetime.now().timestamp()
-        response, usage = chat_llm(messages)
-        usage_token_map = {'completion_tokens': usage.completion_tokens, 'prompt_tokens': usage.prompt_tokens,
-                           'total_tokens': usage.total_tokens, 'total_cost': usage.total_cost,
-                           'completion_cost': usage.completion_cost, 'prompt_cost': usage.prompt_cost}
-        self.usages.append(UsageToken(time_chat_begin, usage_token_map))
-        ctx.register_usage(usage_token_map)
-        self.log("Agent-Network-Agent", f"AGENT TOKEN STEP: {usage_token_map}", self.name)
-        if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
-            self.history_action.pop(0)
-        self.history_action.append({"role": response.role, "content": str(response.content)})
-        return response
+        assistant_message = chat_llm(messages, self.model)
+        messages.append(assistant_message)
+        self.log(assistant_message.role, assistant_message.content)
+        # usage_token_map = {'completion_tokens': usage.completion_tokens, 'prompt_tokens': usage.prompt_tokens,
+        #                    'total_tokens': usage.total_tokens, 'total_cost': usage.total_cost,
+        #                    'completion_cost': usage.completion_cost, 'prompt_cost': usage.prompt_cost}
+        # self.usages.append(UsageToken(time_chat_begin, usage_token_map))
+        
+        ctx.register_llm_action(messages)
+        self.log("Agent-Network-Agent", f"STEP TOKEN NUM: {assistant_message.token_num} COST: {assistant_message.token_cost}", self.name)
+        # if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
+        #     self.history_action.pop(0)
+        # self.history_action.append({"role": response.role, "content": str(response.content)})
+        return assistant_message
 
     def log(self, role, content, class_name=None):
         if class_name is None:
@@ -130,7 +152,7 @@ class BaseAgent(Executable):
 
 
 class BaseAgentGroup(Executable):
-    def __init__(self, graph, config, logger):
+    def __init__(self, config, logger):
         super().__init__(config["name"], config["task"], config["description"])
         self.config = config
         self.name = self.config["name"]
@@ -138,40 +160,38 @@ class BaseAgentGroup(Executable):
 
         self.max_step = self.config["max_step"]
 
+        self.params = self.config.get("params")
+        self.results = self.config.get("results")
+
+        self.routes = []
+        for route in self.config["routes"]:
+            self.routes.append({
+                "source": route["source"],
+                "target": route["target"],
+                "type": route["type"]
+            })
+
         self.agents: Dict[str, List[GroupAgent]] = {}
+        self.start_agent = self.config.get("start_agent")
+
         self.current_agents_name: List[str] = []
         self.agent_communication_prompt = dict()
         self.context = dict()
 
-        self.graph = graph
-        self.load_graph(graph)
-        self.add_routes(graph)
-        self.total_time = 0
-        self.usage_token_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0, 'total_cost': 0,
-                                      'prompt_cost': 0, 'completion_cost': 0}
-
         self.tools = []
 
-    def load_graph(self, graph):
+    def load_agents(self) -> list[BaseAgent]:
+        agents = []
         for agent_item in self.config["agents"]:
             agent_name, agent_config_path = list(agent_item.items())[0]
             with open(agent_config_path, "r", encoding="utf-8") as f:
                 agent_config = yaml.safe_load(f)
             agent = self.import_agent(agent_config)
-            graph.add_node(agent_name,
-                           AgentNode(agent,
-                                     agent_config["params"],
-                                     agent_config["results"]))
+            agents.append(agent)
             self.agents.setdefault(agent_name, [])
             self.agents[agent_name].append(GroupAgent(datetime.now().timestamp(), agent_name))
             self.current_agents_name.append(agent_name)
-
-    def add_routes(self, graph: Graph):
-        graph.add_route(self.name, self.config["start_agent"], "system")
-
-        if self.config["routes"]:
-            for route in self.config["routes"]:
-                graph.add_route(route["source"], route["target"], route["type"])
+        return agents
 
     def import_agent(self, agent_config):
         if agent_config["load_type"] == "module":
@@ -184,10 +204,11 @@ class BaseAgentGroup(Executable):
 
     def execute(self, message, **kwargs):
         # todo start_agent move into route
-        return {
+        results = {
             "message": message,
             "next_agent": self.config["start_agent"]
         }
+        return message, results
 
     def add_agent(self, name):
         assert name not in list(self.current_agents_name), f"agent {name} already exist in group {self.name}"

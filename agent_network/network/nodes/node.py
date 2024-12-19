@@ -1,4 +1,5 @@
 from agent_network.network.executable import Executable, ParameterizedExecutable
+from agent_network.base import BaseAgent
 import agent_network.pipeline.context as ctx
 from agent_network.exceptions import RetryError, ReportError
 
@@ -11,18 +12,22 @@ class Node(ParameterizedExecutable):
         self.description = executable.description
         self.executable = executable
         # todo 移除防止资源竞争
-        self.next_executables: [str] = []
+        self.next_executables: list[str] = []
 
-    def execute(self, input_content, **kwargs):
+    def get_system_message(self):
+        if isinstance(self.executable, BaseAgent):
+            return self.executable.system_message
+        return None
+
+    def execute(self, messages, **kwargs):
         kwargs.update(ctx.retrieves([param["name"] for param in self.params]))
         if error_message := ctx.retrieve("graph_error_message"):
             kwargs["graph_error_message"] = error_message
 
         try:
-            results = self.executable.execute(input_content, **kwargs)
+            messages, results = self.executable.execute(messages, **kwargs)
             default_next_executors = [exe for exe in self.next_executables] if len(self.next_executables) > 0 else None
-            next_executors = [results.get("next_agent")] if results.get(
-                "next_agent") is not None else default_next_executors
+            next_executors = [results.get("next_agent")] if results.get("next_agent") is not None else default_next_executors
             self.next_executables.clear()
         except RetryError as e:
             if kwargs.get("graph_error_message"):
@@ -30,14 +35,14 @@ class Node(ParameterizedExecutable):
             else:
                 kwargs["graph_error_message"] = [e.message]
             if len(kwargs["graph_error_message"]) < 5:
-                results, next_executors = self.execute(input_content, **kwargs)
+                messages, results, next_executors = self.execute(messages, **kwargs)
             else:
                 raise Exception(e, "Task Failed")
         except ReportError as e:
             results = e.error_message
             next_executors = [e.next_node]
-            ctx.register("graph_error_message", results)
-            return results, next_executors
+            ctx.register("graph_error_message", [e.error_message])
+            return messages, results, next_executors
         except Exception as e:
             raise Exception(e, "Task Failed")
 
@@ -47,7 +52,7 @@ class Node(ParameterizedExecutable):
 
         if ctx.retrieve("graph_error_message"):
             ctx.delete("graph_error_message")
-        return results, next_executors
+        return messages, results, next_executors
 
     def release(self):
         if self.executable is not None:
