@@ -53,6 +53,10 @@ class Logger:
         )
 
     def categorize_log(self):
+        vis_data_path = os.path.join(self.log_dir, "vis_data.json")
+        with open(vis_data_path, "w", encoding="UTF-8") as f:
+            f.write(json.dumps(self.message_history, indent=4, ensure_ascii=False))
+
         for message in self.message_history:
             file_path = os.path.join(self.log_dir, f"{message['instance']}.log")
             with open(file_path, "a", encoding="UTF-8") as f:
