@@ -14,8 +14,14 @@ class Logger:
         self.prefix = prefix
         self.all_log_file_name = "all.log"
         self.all_log_file_path = os.path.join(self.log_dir, self.all_log_file_name)
+        self.trace_log_file_name = "trace.log"
+        self.trace_log_file_path = os.path.join(self.log_dir, self.trace_log_file_name)
 
         self.message_history = []
+
+    def log_trace(self, trace):
+        with open(self.trace_log_file_path, 'a', encoding="UTF-8") as f:
+            f.write(repr(trace))
 
     def log(self, role="", content="", instance="", output=True, cur_time=None):
         """

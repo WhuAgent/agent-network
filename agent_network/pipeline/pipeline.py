@@ -8,6 +8,7 @@ from agent_network.network.route import Route
 from agent_network.base import BaseAgentGroup
 from agent_network.pipeline.task import TaskNode
 import agent_network.pipeline.context as ctx
+from agent_network.pipeline.trace import Trace
 
 
 class Pipeline:
@@ -22,13 +23,14 @@ class Pipeline:
         else:
             self.id = id
 
+        self.trace = Trace(self.id)
         for item in self.config["context"]:
             if item["type"] == "str":
                 ctx.register(item["name"], self.task if item["name"] == "task" else "")
             elif item["type"] == "list":
                 ctx.register(item["name"], [])
         self.total_time = 0
-        
+
         self.message_num = 0
         self.execution_history: list[History] = []
         self.cur_execution = None
@@ -48,14 +50,14 @@ class Pipeline:
                 graph.add_node(group.name, GroupNode(group, group.params, group.results))
                 for agent in agents:
                     graph.add_node(agent.name, AgentNode(agent, agent.params, agent.results))
-                
+
                 graph.add_route(group.name, group.start_agent, "start")
                 for route in group.routes:
                     graph.add_route(route["source"], route["target"], route["type"])
-        
+
         nodes = graph.get_nodes()
         for node in nodes:
-            if system_message :=  graph.get_node(node).get_system_message():
+            if system_message := graph.get_node(node).get_system_message():
                 self.node_messages[node] = [system_message]
             else:
                 self.node_messages[node] = []
@@ -76,24 +78,25 @@ class Pipeline:
 
     def execute(self, graph: Graph, route: Route, task: str, context=None):
         self.load(graph, route)
-        return self.execute_graph(graph, 
+        return self.execute_graph(graph,
                                   route,
                                   [TaskNode(name="start")],
-                                  [TaskNode(graph.get_node(self.config["start_node"]), task)], 
+                                  [TaskNode(graph.get_node(self.config["start_node"]), task)],
                                   context,
                                   True)
 
-    def execute_graph(self, 
-                      graph: Graph, 
-                      route: Route, 
-                      father_nodes: list[TaskNode], 
-                      nodes: list[TaskNode], 
-                      context=None, 
+    def execute_graph(self,
+                      graph: Graph,
+                      route: Route,
+                      father_nodes: list[TaskNode],
+                      nodes: list[TaskNode],
+                      context=None,
                       skip_load=False):
         if not skip_load:
             self.load(graph, route)
         if nodes is None or len(nodes) == 0:
             return
+        self.trace.add_nodes([n.name for n in nodes])
         self.step += 1
         max_step = self.config.get("max_step", 100)
         if self.step > max_step:
@@ -116,7 +119,7 @@ class Pipeline:
 
                 self.cur_execution.llm_messages = messages[len_message:]
                 self.cur_execution.next_executors = next_executables
-                
+
                 # self.load_route(graph, route)
                 if next_executables is None:
                     continue
@@ -124,11 +127,13 @@ class Pipeline:
                     next_executable, message = route.forward_message(node.name, next_executable, result)
                     # if not leaf node
                     if message != "COMPLETE":
-                        next_nodes.append(TaskNode(graph.get_node(next_executable), message))
+                        next_task_node = TaskNode(graph.get_node(next_executable), message)
+                        next_nodes.append(next_task_node)
+                self.trace.add_spans(node.name, [nn for nn in next_executables], messages, result)
             except Exception as e:
                 self.release()
                 raise Exception(e)
-        
+
         self.execute_graph(graph, route, nodes, next_nodes)
         return ctx.retrieve_global_all()
 
@@ -145,20 +150,22 @@ class Pipeline:
         total_token_num = 0
         total_token_cost = 0
         total_time = self.total_time
-        
+
         for execution in self.execution_history:
             for message in execution.llm_messages:
                 total_token_num += message.token_num
                 total_token_cost += message.token_cost
-        
-        self.logger.log("network", f"PIPELINE {self.id} TOTSL TOKEN NUM: {total_token_num} COST: {total_token_cost}", "Agent-Network")
+
+        self.logger.log("network", f"PIPELINE {self.id} TOTSL TOKEN NUM: {total_token_num} COST: {total_token_cost}",
+                        "Agent-Network")
         self.logger.log("network", f"PIPELINE {self.id} TIME COST TOTAL: {self.total_time}", "Agent-Network")
         self.logger.log("network", f"PIPELINE {self.id} has been released", "Agent-Network")
         ctx.release()
         ctx.release_global()
 
         self.logger.categorize_log()
-        
+        self.logger.log_trace(self.trace)
+
         self.total_time = 0
 
         self.message_num = 0
@@ -167,4 +174,3 @@ class Pipeline:
         self.node_messages = dict()
 
         return total_token_num, total_token_cost, total_time
-

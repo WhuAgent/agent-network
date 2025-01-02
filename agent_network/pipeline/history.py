@@ -1,6 +1,7 @@
 from agent_network.pipeline.task import TaskNode
 from agent_network.utils.llm.message import Message
 
+
 class History:
     def __init__(self, pre_executors, cur_executor):
         self.pre_executors: list[TaskNode] = pre_executors

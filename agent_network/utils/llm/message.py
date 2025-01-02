@@ -25,6 +25,9 @@ class Message:
     def __str__(self):
         return self.content
 
+    def __repr__(self):
+        return f"'{self.role}, {self.token_num}, {self.token_cost}'"
+
 
 class SystemMessage(Message):
     def __init__(self, content):
