@@ -102,11 +102,16 @@ def retrieve_pipline_id():
     return pipeline_id
 
 
-def register_time(name, time_cost):
+def register_time(time_cost):
     pipeline = retrieve(pipeline_key)
     if pipeline is None:
         raise Exception("pipeline is not in the current context")
+
+    pipeline.cur_execution.time_cost = time_cost
+
     pipeline.total_time += time_cost
+
+    pipeline.logger.log("network", f"AGENT {pipeline.cur_execution.cur_executor.name} time cost: {time_cost}", "Agent-Network")
 
 
 def register_llm_action(messages: list[Message]):
@@ -121,9 +126,3 @@ def register_llm_action(messages: list[Message]):
     for i in range(pipeline.message_num, len(messages)):
         pipeline.cur_execution.llm_messages.append(messages[i])
         pipeline.message_num += 1
-    # pipeline.usage_token_total_map["completion_tokens"] += usage_token_total_map["completion_tokens"]
-    # pipeline.usage_token_total_map["prompt_tokens"] += usage_token_total_map["prompt_tokens"]
-    # pipeline.usage_token_total_map["total_tokens"] += usage_token_total_map["total_tokens"]
-    # pipeline.usage_token_total_map["prompt_cost"] += usage_token_total_map["prompt_cost"]
-    # pipeline.usage_token_total_map["completion_cost"] += usage_token_total_map["completion_cost"]
-    # pipeline.usage_token_total_map["total_cost"] += usage_token_total_map["total_cost"]

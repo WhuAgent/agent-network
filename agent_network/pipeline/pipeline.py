@@ -151,13 +151,14 @@ class Pipeline:
                 total_token_num += message.token_num
                 total_token_cost += message.token_cost
         
-        self.logger.log("Agent-Network",
-                        f"PIPELINE TOTSL TOKEN NUM: {total_token_num} COST: {total_token_cost}",
-                        self.id)
-        self.logger.log("Agent-Network", f"PIPELINE TIME COST TOTAL: {self.total_time}", self.id)
-        self.logger.log("Agent-Network", f"PIPELINE: {self.id} has been released")
+        self.logger.log("network", f"PIPELINE {self.id} TOTSL TOKEN NUM: {total_token_num} COST: {total_token_cost}", "Agent-Network")
+        self.logger.log("network", f"PIPELINE {self.id} TIME COST TOTAL: {self.total_time}", "Agent-Network")
+        self.logger.log("network", f"PIPELINE {self.id} has been released", "Agent-Network")
         ctx.release()
         ctx.release_global()
+
+        self.logger.categorize_log()
+        
         self.total_time = 0
 
         self.message_num = 0

@@ -96,13 +96,13 @@ class BaseAgent(Executable):
         return messages, results
 
     def execute(self, messages, **kwargs):
-        begin_t = datetime.now().timestamp()
+        # begin_t = datetime.now().timestamp()
         messages, results = self.forward(messages, **kwargs)
-        end_t = datetime.now().timestamp()
-        self.log("Agent-Network-Agent", f"AGENT {self.name} time cost: {end_t - begin_t}", self.name)
-        time_cost = end_t - begin_t
-        self.time_costs.append(UsageTime(begin_t, time_cost))
-        ctx.register_time(self.name, time_cost)
+        # end_t = datetime.now().timestamp()
+        # self.log("network", f"AGENT {self.name} time cost: {end_t - begin_t}", self.name)
+        # time_cost = end_t - begin_t
+        # self.time_costs.append(UsageTime(begin_t, time_cost))
+        # ctx.register_time(self.name, time_cost)
         return messages, results
 
     def chat_llm(self, messages):
@@ -117,18 +117,18 @@ class BaseAgent(Executable):
         # self.usages.append(UsageToken(time_chat_begin, usage_token_map))
         
         ctx.register_llm_action(messages)
-        self.log("Agent-Network-Agent", f"STEP TOKEN NUM: {assistant_message.token_num} COST: {assistant_message.token_cost}", self.name)
+        self.log("network", f"STEP TOKEN NUM: {assistant_message.token_num} COST: {assistant_message.token_cost}")
         # if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
         #     self.history_action.pop(0)
         # self.history_action.append({"role": response.role, "content": str(response.content)})
         return assistant_message
 
-    def log(self, role, content, class_name=None):
-        if class_name is None:
-            class_name = self.name
+    def log(self, role, content, instance=None):
+        if instance is None:
+            instance = self.name
         if not isinstance(content, str):
             content = json.dumps(content, indent=4, ensure_ascii=False)
-        self.logger.log(role, content, class_name=class_name)
+        self.logger.log(role, content, instance=instance)
 
     def log_messages(self, messages):
         for message in messages:
