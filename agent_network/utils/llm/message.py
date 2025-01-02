@@ -1,5 +1,3 @@
-import tiktoken
-
 from openai.types.completion_usage import CompletionUsage
 
 model_cost = {
@@ -13,6 +11,7 @@ model_cost = {
     }
 }
 
+
 class Message:
     def __init__(self, role, content):
         self.role = role
@@ -22,7 +21,7 @@ class Message:
 
     def to_openai_message(self):
         return {"role": self.role, "content": self.content}
-    
+
     def __str__(self):
         return self.content
 

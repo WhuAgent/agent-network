@@ -1,13 +1,13 @@
 import os
 import yaml
 from openai import OpenAI
-from openai.types.completion_usage import CompletionUsage
 
 from agent_network.utils.llm.message import Message, OpenAIMessage
 
 openai_config_path = os.path.join(os.getcwd(), 'agent_network/config/openai.yml')
 with open(openai_config_path, "r", encoding="UTF-8") as f:
     openai_config = yaml.safe_load(f)
+
 
 def chat_llm(messages: list[Message], model=None, **kwargs):
     if model is None:
@@ -27,5 +27,5 @@ def chat_llm(messages: list[Message], model=None, **kwargs):
         seed=42,
         **kwargs
     )
-    
+
     return OpenAIMessage(response.choices[0].message.content, model, response.usage)
