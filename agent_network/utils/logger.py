@@ -21,7 +21,7 @@ class Logger:
 
     def log_trace(self, trace):
         with open(self.trace_log_file_path, 'a', encoding="UTF-8") as f:
-            f.write(repr(trace))
+            f.write(trace.to_json())
 
     def log(self, role="", content="", instance="", output=True, cur_time=None):
         """
