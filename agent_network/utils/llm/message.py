@@ -5,9 +5,141 @@ model_cost = {
         "prompt_token": 0.0035,
         "completion_token": 0.0105
     },
+    "gpt-3.5-turbo-1106": {
+        "prompt_token": 0.007,
+        "completion_token": 0.014
+    },
+    "gpt-3.5-turbo-0125": {
+        "prompt_token": 0.0035,
+        "completion_token": 0.0105
+    },
+    "gpt-3.5-turbo-16k": {
+        "prompt_token": 0.021,
+        "completion_token": 0.028
+    },
+    "gpt-3.5-turbo-instruct": {
+        "prompt_token": 0.0105,
+        "completion_token": 0.014
+    },
+    "o1-mini": {
+        "prompt_token": 0.021,
+        "completion_token": 0.084
+    },
+    "o1-preview": {
+        "prompt_token": 0.105,
+        "completion_token": 0.42
+    },
     "gpt-4": {
         "prompt_token": 0.21,
         "completion_token": 0.42
+    },
+    "gpt-4o": {
+        "prompt_token": 0.0175,
+        "completion_token": 0.07
+    },
+    "gpt-4o-2024-05-13": {
+        "prompt_token": 0.035,
+        "completion_token": 0.105
+    },
+    "gpt-4o-2024-08-06": {
+        "prompt_token": 0.0175,
+        "completion_token": 0.07
+    },
+    "gpt-4o-2024-11-20": {
+        "prompt_token": 0.0175,
+        "completion_token": 0.07
+    },
+    "chatgpt-4o-latest": {
+        "prompt_token": 0.035,
+        "completion_token": 0.105
+    },
+    "gpt-4o-mini": {
+        "prompt_token": 0.00105,
+        "completion_token": 0.0042
+    },
+    "gpt-4-0613": {
+        "prompt_token": 0.21,
+        "completion_token": 0.42
+    },
+    "gpt-4-turbo-preview": {
+        "prompt_token": 0.07,
+        "completion_token": 0.21
+    },
+    "gpt-4-0125-preview": {
+        "prompt_token": 0.07,
+        "completion_token": 0.21
+    },
+    "gpt-4-1106-preview": {
+        "prompt_token": 0.07,
+        "completion_token": 0.21
+    },
+    "gpt-4-vision-preview": {
+        "prompt_token": 0.07,
+        "completion_token": 0.21
+    },
+    "gpt-4-turbo": {
+        "prompt_token": 0.07,
+        "completion_token": 0.21
+    },
+    "gpt-4-turbo-2024-04-09": {
+        "prompt_token": 0.07,
+        "completion_token": 0.21
+    },
+    "gpt-3.5-turbo-ca": {
+        "prompt_token": 0.001,
+        "completion_token": 0.003
+    },
+    "gpt-4-ca": {
+        "prompt_token": 0.12,
+        "completion_token": 0.24
+    },
+    "gpt-4-turbo-ca": {
+        "prompt_token": 0.04,
+        "completion_token": 0.12
+    },
+    "gpt-4o-ca": {
+        "prompt_token": 0.01,
+        "completion_token": 0.04
+    },
+    "chatgpt-4o-latest-ca": {
+        "prompt_token": 0.02,
+        "completion_token": 0.06
+    },
+    "o1-mini-ca": {
+        "prompt_token": 0.012,
+        "completion_token": 0.048
+    },
+    "o1-preview-ca": {
+        "prompt_token": 0.06,
+        "completion_token": 0.24
+    },
+    "claude-3-5-sonnet-20240620": {
+        "prompt_token": 0.015,
+        "completion_token": 0.075
+    },
+    "claude-3-5-sonnet-20241022": {
+        "prompt_token": 0.015,
+        "completion_token": 0.075
+    },
+    "claude-3-5-haiku-20241022": {
+        "prompt_token": 0.005,
+        "completion_token": 0.025
+    },
+    "gemini-1.5-flash-latest": {
+        "prompt_token": 0.0006,
+        "completion_token": 0.0024
+    },
+    "gemini-1.5-pro-latest": {
+        "prompt_token": 0.01,
+        "completion_token": 0.04
+    },
+    "gemini-exp-1206": {
+        "prompt_token": 0.01,
+        "completion_token": 0.04
+    },
+    "gemini-2.0-flash-exp": {
+        "prompt_token": 0.01,
+        "completion_token": 0.04
     }
 }
 
