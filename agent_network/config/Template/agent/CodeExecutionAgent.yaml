@@ -37,7 +37,49 @@ params:
 # 执行上下文结果
 results:
 
+# 去中心化
 services:
+    ''
+
+code:
+    '|
+    def forward(self, message, **kwargs):
+            if kwargs["subtasks"] is not None and kwargs["workflow"] is not None:
+                return {}
+            messages = []
+            graph = static.graph
+            keys = ["task", "description", "modality", "language", "requirements", "codes", "ideas"]
+            for key in keys:
+                if kwargs[key]:
+                    if "codes" in key:
+                        self.add_message("user", f"{{{key}}}:{codes_2_str(kwargs[key])}", messages)
+                    else:
+                        self.add_message("user", f"{{{key}}}:{kwargs[key]}", messages)
+            response = self.chat_llm(messages)
+            tasks, subtasks, subtask, workflow, workflow_str = extract_tasks_and_dependencies(response.content)
+            # todo 根据tasks创建agent, 根据workflow创建路由
+            coding_group_node: Node = graph.get_node("CodingGroup")
+            coding_group: BaseAgentGroup = coding_group_node.executable
+            for task_id, task_info in tasks.items():
+                if task_id not in workflow:
+                    workflow[task_id] = {"dependencies": []}
+                task_coding_agent = CodingAgent(load_config("config/CodeTeam/CodingAgent.yaml"), static.logger)
+                task_id = str(task_id)
+                task_coding_agent.name = "CodingAgent for task: " + task_id
+                task_coding_agent.description = task_info["description"]
+                task_coding_agent.task_id = task_id
+                coding_group.add_agent(task_coding_agent.name)
+                code_agent_node = AgentNode(task_coding_agent, task_coding_agent.params, task_coding_agent.results)
+                graph.add_node(task_coding_agent.name, code_agent_node)
+                graph.add_route(self.name, task_coding_agent.name, "message")
+                organizer_node: Node = graph.get_node(self.name)
+                organizer_node.next_executables.append(task_coding_agent.name)
+            results = {
+                "subtasks": tasks,
+                "workflow": workflow,
+            }
+            return results
+    '
 
 # agent 的 prompt
 prompts:
@@ -46,13 +88,6 @@ prompts:
 tools:
   - type: "VDB"
     name: "VDB1"
-
-# agent 需要的输入结构
-input_format: "format"
-
-# agent 的下游 agent
-children:
-  - input_content_agent
 
 # 其他的一些参数
 ifLeaf: True

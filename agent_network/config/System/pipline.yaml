@@ -1,0 +1,19 @@
+# pipline 名称
+name: "Evolution"
+
+# pipline 详细描述
+description: "智能体网络演化流水线"
+
+# pipline 所执行的任务
+task: ""
+
+# 为了完成任务的计划，通过调用 group 完成任务
+group_pipline:
+  - EvolutionGroup: "config/System/EvolutionGroup.yaml"
+
+start_node: "EvolutionGroup"
+
+# 任务执行过程中的上下文信息（如返回值等），用于 group 之间的信息传递
+context:
+  - name: "task"
+    type: "str"

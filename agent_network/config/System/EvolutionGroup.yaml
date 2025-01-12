@@ -1,0 +1,46 @@
+# 对外暴露的 id，用于将 group 引入 pipline
+ref_id: "EvolutionGroup"
+
+# group 名称
+name: "EvolutionGroup"
+# 对 group 的详细描述
+description: "智能体网络演化组"
+# group 要完成的任务
+task: ""
+
+# group 内包含的 agent
+agents:
+  - EvolutionNewAgent: "config/System/EvolutionNewAgent.yaml"
+
+# 信息流开始的 agent
+start_agent: EvolutionNewAgent
+
+# 路由
+routes: []
+
+# 最大执行步数
+max_step: 100
+
+# 执行上下文参数
+params:
+  - name: "task"
+    type: "str"
+
+# 执行上下文结果
+results:
+  - name: "config"
+    type: "dict"
+
+# group 场景下的 prompt
+prompts:
+
+# group 提供的工具
+tools:
+
+# 其他参数
+ifLeaf: True
+ifService: False
+runtimeRevisionNumber: 1
+ifKnowledgeable: True
+historyNumber: 0
+energy: 0

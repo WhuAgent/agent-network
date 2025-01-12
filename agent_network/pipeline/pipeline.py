@@ -47,9 +47,9 @@ class Pipeline:
                 group = BaseAgentGroup(configs, self.logger)
                 agents = group.load_agents()
 
-                graph.add_node(group.name, GroupNode(group, group.params, group.results))
+                graph.add_node(group.name, GroupNode(graph, group, group.params, group.results))
                 for agent in agents:
-                    graph.add_node(agent.name, AgentNode(agent, agent.params, agent.results))
+                    graph.add_node(agent.name, AgentNode(graph, agent, agent.params, agent.results))
 
                 graph.add_route(group.name, group.start_agent, "start")
                 for route in group.routes:

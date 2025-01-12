@@ -1,0 +1,52 @@
+# 对外暴露的 id，用于将 agent 引入 group
+ref_id: "EvolutionNewAgent"
+
+# agent 的名称
+name: "EvolutionNewAgent"
+# 对 agent 的详细描述
+description: "智能体网络演化新增智能体"
+# agent 角色扮演相关？
+role: ""
+# agent 要执行的任务
+task: ""
+# agent 加载模式
+load_type: "module"
+# agent 类的位置
+loadModule: "evolution.evolution_agent"
+loadClass: "EvolutionAgent"
+
+# agent 是否需要与大模型进行交互
+need_chat: True
+model: "gpt-3.5-turbo"
+
+init_extra_params:
+
+# 执行上下文参数
+params:
+  - name: "task"
+    type: "str"
+
+# 执行上下文结果
+results:
+  - name: "config"
+    type: "dict"
+
+# agent 的 prompt
+prompts:
+  - type: "inline"
+    role: "system"
+    content: |
+      Based on the given task and profile template for an agent, write the agent.
+tools:
+  - type: "VDB"
+    name: "VDB1"
+
+# 其他的一些参数
+ifLeaf: True
+ifService: False
+ifKnowledgeable: True
+ifLearnable: False
+runtimeRevisionNumber: 1
+historyNumber: 0
+energy: 0
+
