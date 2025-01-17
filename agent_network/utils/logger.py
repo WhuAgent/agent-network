@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 class Logger:
-    def __init__(self, root, prefix=""):
+    def __init__(self, root, prefix="", global_switch=True):
         self.start_time = datetime.now().strftime("%Y%m%d-%H%M%S")
         self.dir_name = f"{prefix}-{self.start_time}" if prefix else self.start_time
         self.log_dir = os.path.join(root, self.dir_name)
@@ -16,12 +16,13 @@ class Logger:
         self.all_log_file_path = os.path.join(self.log_dir, self.all_log_file_name)
         self.trace_log_file_name = "trace.log"
         self.trace_log_file_path = os.path.join(self.log_dir, self.trace_log_file_name)
-
+        self.global_switch = global_switch
         self.message_history = []
 
     def log_trace(self, trace):
-        with open(self.trace_log_file_path, 'a', encoding="UTF-8") as f:
-            f.write(repr(trace))
+        if self.global_switch:
+            with open(self.trace_log_file_path, 'a', encoding="UTF-8") as f:
+                f.write(repr(trace))
 
     def log(self, role="", content="", instance="", output=True, cur_time=None):
         """
@@ -46,8 +47,9 @@ class Logger:
 
         if output:
             print(buffer)
-        with open(self.all_log_file_path, 'a', encoding="UTF-8") as f:
-            f.write(buffer)
+        if self.global_switch:
+            with open(self.all_log_file_path, 'a', encoding="UTF-8") as f:
+                f.write(buffer)
 
         self.message_history.append(
             {
@@ -60,16 +62,18 @@ class Logger:
 
     def categorize_log(self):
         vis_data_path = os.path.join(self.log_dir, "vis_data.json")
-        with open(vis_data_path, "w", encoding="UTF-8") as f:
-            f.write(json.dumps(self.message_history, indent=4, ensure_ascii=False))
+        if self.global_switch:
+            with open(vis_data_path, "w", encoding="UTF-8") as f:
+                f.write(json.dumps(self.message_history, indent=4, ensure_ascii=False))
 
         for message in self.message_history:
             file_path = os.path.join(self.log_dir, f"{message['instance']}.log")
-            with open(file_path, "a", encoding="UTF-8") as f:
-                buffer = "---------------------------------------------------\n"
-                buffer += f"[{message['time']}][{message['instance']}][{message['role']}]\n"
-                buffer += f"{message['content']}\n\n"
-                f.write(buffer)
+            if self.global_switch:
+                with open(file_path, "a", encoding="UTF-8") as f:
+                    buffer = "---------------------------------------------------\n"
+                    buffer += f"[{message['time']}][{message['instance']}][{message['role']}]\n"
+                    buffer += f"{message['content']}\n\n"
+                    f.write(buffer)
 
     def rename(self, success):
         file_name, extension = self.file_name.split(".")
