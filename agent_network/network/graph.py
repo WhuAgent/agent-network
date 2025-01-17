@@ -152,11 +152,13 @@ class Graph(Executable):
     def node_exists(self, name):
         return name in self.nodes
 
-    def add_route(self, source, target, message_type):
+    def add_route(self, group, source, target, message_type, rule):
         self.routes.append({
+            "group": group,
             "source": source,
             "target": target,
-            "message_type": message_type
+            "message_type": message_type,
+            "rule": rule
         })
 
     def release(self):

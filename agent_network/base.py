@@ -15,9 +15,10 @@ from agent_network.utils.llm.message import SystemMessage, UserMessage, Assistan
 
 class BaseAgent(Executable):
 
-    def __init__(self, config, logger):
+    def __init__(self, graph, config, logger):
         super().__init__(config["name"], config["task"], config["description"])
         self.config = config
+        self.graph = graph
         self.task = self.config["task"]
         self.title = self.config["name"]
         self.description = self.config["description"]
@@ -76,18 +77,12 @@ class BaseAgent(Executable):
             messages.insert(0, self.system_message)
             self.log("system", self.system_message.content, self.__class__.__name__)
         self.append_message(role, content, messages)
-        # messages.append({
-        #     "role": role,
-        #     "content": content
-        # })
         self.log(role, content)
         if self.append_history_num > 0:
             for i in range(min(self.append_history_num, len(self.history_action))):
                 self.append_message("system", f"{i + 1}th historical records:\n", messages)
-                # messages.append({"role": "system", "content": f"The {i + 1}th historical records:\n"})
                 history_action = self.history_action[len(self.history_action) - self.append_history_num + i]
                 self.append_message(history_action["role"], history_action["content"], messages)
-                # messages.append({"role": history_action["role"], "content": history_action["content"]})
         return messages
 
     @abstractmethod
@@ -96,13 +91,12 @@ class BaseAgent(Executable):
         return messages, results
 
     def execute(self, messages, **kwargs):
-        # begin_t = datetime.now().timestamp()
+        begin_t = datetime.now().timestamp()
         messages, results = self.forward(messages, **kwargs)
-        # end_t = datetime.now().timestamp()
-        # self.log("network", f"AGENT {self.name} time cost: {end_t - begin_t}", self.name)
-        # time_cost = end_t - begin_t
-        # self.time_costs.append(UsageTime(begin_t, time_cost))
-        # ctx.register_time(self.name, time_cost)
+        end_t = datetime.now().timestamp()
+        self.log("network", f"AGENT {self.name} time cost: {end_t - begin_t}", self.name)
+        time_cost = end_t - begin_t
+        self.time_costs.append(UsageTime(begin_t, time_cost))
         return messages, results
 
     def chat_llm(self, messages):
@@ -111,16 +105,16 @@ class BaseAgent(Executable):
         assistant_message = chat_llm(messages, self.model)
         messages.append(assistant_message)
         self.log(assistant_message.role, assistant_message.content)
-        # usage_token_map = {'completion_tokens': usage.completion_tokens, 'prompt_tokens': usage.prompt_tokens,
-        #                    'total_tokens': usage.total_tokens, 'total_cost': usage.total_cost,
-        #                    'completion_cost': usage.completion_cost, 'prompt_cost': usage.prompt_cost}
-        # self.usages.append(UsageToken(time_chat_begin, usage_token_map))
+        usage_token_map = {'completion_tokens': assistant_message.completion_token_num, 'prompt_tokens': assistant_message.prompt_token_num,
+                           'total_tokens': assistant_message.token_num, 'total_cost': assistant_message.token_cost,
+                           'completion_cost': assistant_message.completion_token_cost, 'prompt_cost': assistant_message.prompt_token_cost}
+        self.usages.append(UsageToken(time_chat_begin, usage_token_map))
         
         ctx.register_llm_action(messages)
         self.log("network", f"STEP TOKEN NUM: {assistant_message.token_num} COST: {assistant_message.token_cost}")
-        # if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
-        #     self.history_action.pop(0)
-        # self.history_action.append({"role": response.role, "content": str(response.content)})
+        if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
+            self.history_action.pop(0)
+        self.history_action.append({"role": assistant_message.role, "content": assistant_message.content})
         return assistant_message
 
     def log(self, role, content, instance=None):
@@ -152,11 +146,14 @@ class BaseAgent(Executable):
 
 
 class BaseAgentGroup(Executable):
-    def __init__(self, config, logger):
+    def __init__(self, graph, route, config, logger):
         super().__init__(config["name"], config["task"], config["description"])
         self.config = config
         self.name = self.config["name"]
         self.logger = logger
+        self.graph = graph
+        self.route = route
+        self.class_name = self.config["ref_id"] if "ref_id" in self.config else None
 
         self.max_step = self.config["max_step"]
 
@@ -166,9 +163,11 @@ class BaseAgentGroup(Executable):
         self.routes = []
         for route in self.config["routes"]:
             self.routes.append({
+                "group": self.name,
                 "source": route["source"],
                 "target": route["target"],
-                "type": route["type"]
+                "type": route["type"],
+                "rule": route["rule"] if "rule" in route else None
             })
 
         self.agents: Dict[str, List[GroupAgent]] = {}
@@ -184,9 +183,13 @@ class BaseAgentGroup(Executable):
         agents = []
         for agent_item in self.config["agents"]:
             agent_name, agent_config_path = list(agent_item.items())[0]
-            with open(agent_config_path, "r", encoding="utf-8") as f:
-                agent_config = yaml.safe_load(f)
-            agent = self.import_agent(agent_config)
+            exist_agent_node = self.graph.get_node(agent_name)
+            if exist_agent_node is not None:
+                agent = exist_agent_node.executable
+            else:
+                with open(agent_config_path, "r", encoding="utf-8") as f:
+                    agent_config = yaml.safe_load(f)
+                agent = self.import_agent(agent_config)
             agents.append(agent)
             self.agents.setdefault(agent_name, [])
             self.agents[agent_name].append(GroupAgent(datetime.now().timestamp(), agent_name))
@@ -197,7 +200,7 @@ class BaseAgentGroup(Executable):
         if agent_config["load_type"] == "module":
             agent_module = importlib.import_module(agent_config["loadModule"])
             agent_class = getattr(agent_module, agent_config["loadClass"])
-            agent_instance = agent_class(agent_config, self.logger)
+            agent_instance = agent_class(self.graph, agent_config, self.logger)
         else:
             raise Exception("Agent load type must be module!")
         return agent_instance

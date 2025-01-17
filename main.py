@@ -6,11 +6,10 @@ from agent_network.pipeline.pipeline import Pipeline
 from agent_network.pipeline.task import TaskNode
 from agent_network.utils.logger import Logger
 from flask import Flask, request
-from agent_network.network.graph import GraphStart, Graph
-from agent_network.network.network import Network
+from agent_network.network.graph import Graph
+from agent_network.constant import network
 
 app = Flask(__name__)
-network = Network('agent-network', None, None, None)
 
 
 @app.route('/task', methods=['GET'])

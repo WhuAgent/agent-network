@@ -1,5 +1,8 @@
 import uuid
 import yaml
+from os import _exit
+import traceback
+import importlib
 
 from agent_network.pipeline.history import History
 from agent_network.network.graph import Graph
@@ -44,16 +47,21 @@ class Pipeline:
             group_config_path = list(group.values())[0]
             with open(group_config_path, "r", encoding="utf-8") as f:
                 configs = yaml.safe_load(f)
-                group = BaseAgentGroup(configs, self.logger)
+                if "ref_id" in configs:
+                    group = self.import_group(graph, configs)
+                else:
+                    group = BaseAgentGroup(graph, graph.route, configs, self.logger)
                 agents = group.load_agents()
 
-                graph.add_node(group.name, GroupNode(group, group.params, group.results))
+                graph.add_node(group.name, GroupNode(graph, group, group.params, group.results))
                 for agent in agents:
-                    graph.add_node(agent.name, AgentNode(agent, agent.params, agent.results))
+                    graph.add_node(agent.name, AgentNode(graph, agent, agent.params, agent.results))
 
-                graph.add_route(group.name, group.start_agent, "start")
+                graph.add_route(group.name, group.name, group.start_agent, "start", "hard")
                 for route in group.routes:
-                    graph.add_route(route["source"], route["target"], route["type"])
+                    if "rule" not in route:
+                        route["rule"] = "soft"
+                    graph.add_route(group.name, route["source"], route["target"], route["type"], route["rule"])
 
         nodes = graph.get_nodes()
         for node in nodes:
@@ -62,36 +70,58 @@ class Pipeline:
             else:
                 self.node_messages[node] = []
 
+    def import_group(self, graph, group_config):
+        if "load_type" in group_config and group_config["load_type"] == "module":
+            group_module = importlib.import_module(group_config["loadModule"])
+            group_class = getattr(group_module, group_config["loadClass"])
+            group_instance = group_class(graph, graph.route, group_config, self.logger)
+        else:
+            raise Exception("Group load type must be module!")
+        return group_instance
+
     def load_route(self, graph: Graph, route: Route):
         for node_name, node_instance in graph.nodes.items():
             if not route.node_exist(node_name):
                 route.register_node(node_name, node_instance.description)
 
         for item in graph.routes:
-            route.register_contact(item["source"], item["target"], item["message_type"])
-        graph.route = route
+            if item["rule"] is None:
+                item["rule"] = "soft"
+            route.register_contact(item["group"], item["source"], item["target"], item["message_type"], item["rule"])
 
     def load(self, graph: Graph, route: Route):
         if self.step == 0:
+            graph.route = route
             self.load_graph(graph)
             self.load_route(graph, route)
 
     def execute(self, graph: Graph, route: Route, task: str, context=None):
-        self.load(graph, route)
-        return self.execute_graph(graph,
-                                  route,
-                                  [TaskNode(name="start")],
-                                  [TaskNode(graph.get_node(self.config["start_node"]), task)],
-                                  context,
-                                  True)
+        try:
+            self.load(graph, route)
+        except Exception as e:
+            print(f"Agent-network load error, please check config file: {e}")
+            traceback.print_exc()
+            self.release()
+            _exit(0)
+        try:
+            return self._execute_graph(graph,
+                                       route,
+                                       [TaskNode(name="start")],
+                                       [TaskNode(graph.get_node(self.config["start_node"]), task)],
+                                       context,
+                                       True)
+        except Exception as e:
+            traceback.print_exc()
+            self.release()
+            raise Exception(e)
 
-    def execute_graph(self,
-                      graph: Graph,
-                      route: Route,
-                      father_nodes: list[TaskNode],
-                      nodes: list[TaskNode],
-                      context=None,
-                      skip_load=False):
+    def _execute_graph(self,
+                       graph: Graph,
+                       route: Route,
+                       father_nodes: list[TaskNode],
+                       nodes: list[TaskNode],
+                       context=None,
+                       skip_load=False):
         if not skip_load:
             self.load(graph, route)
         if nodes is None or len(nodes) == 0:
@@ -134,7 +164,7 @@ class Pipeline:
                 self.release()
                 raise Exception(e)
 
-        self.execute_graph(graph, route, nodes, next_nodes)
+        self._execute_graph(graph, route, nodes, next_nodes)
         return ctx.retrieve_global_all()
 
     def register_time_cost(self, time_cost):

@@ -3,16 +3,16 @@ from agent_network.network.nodes.node import Node
 
 
 class GroupNode(Node):
-    def __init__(self, executable: Executable, params, results):
-        super().__init__(executable, params, results)
+    def __init__(self, graph, executable: Executable, params, results):
+        super().__init__(graph, executable, params, results)
 
     # def release(self):
     #     return self.executable.release()
 
 
 class AgentNode(Node):
-    def __init__(self, executable: Executable, params, results):
-        super().__init__(executable, params, results)
+    def __init__(self, graph, executable: Executable, params, results):
+        super().__init__(graph, executable, params, results)
 
     # def release(self):
     #     usages, time_costs = self.executable.release()

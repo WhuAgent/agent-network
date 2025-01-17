@@ -1,6 +1,6 @@
-from agent_network.main import network
 import signal
 from os import _exit
+from agent_network.constant import network
 
 
 def signal_handler(sig, frame):

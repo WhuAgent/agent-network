@@ -6,7 +6,7 @@ from agent_network.exceptions import RetryError, ReportError
 
 
 class Node(ParameterizedExecutable):
-    def __init__(self, executable: Executable, params, results):
+    def __init__(self, graph, executable: Executable, params, results):
         super().__init__(executable.name, executable.task, executable.description, params, results)
         self.name = executable.name
         self.task = executable.task
@@ -14,6 +14,7 @@ class Node(ParameterizedExecutable):
         self.executable = executable
         # todo 移除防止资源竞争
         self.next_executables: list[str] = []
+        self.graph = graph
 
     def get_system_message(self):
         if isinstance(self.executable, BaseAgent):
@@ -24,7 +25,7 @@ class Node(ParameterizedExecutable):
         kwargs.update(ctx.retrieves([param["name"] for param in self.params]))
         if error_message := ctx.retrieve("graph_error_message"):
             kwargs["graph_error_message"] = error_message
-        
+
         try:
             begin_t = datetime.now().timestamp()
             messages, results = self.executable.execute(messages, **kwargs)
@@ -52,7 +53,8 @@ class Node(ParameterizedExecutable):
             end_t = datetime.now().timestamp()
             ctx.register_time(end_t - begin_t)
             default_next_executors = [exe for exe in self.next_executables] if len(self.next_executables) > 0 else None
-            next_executors = [results.get("next_agent")] if results.get("next_agent") is not None else default_next_executors
+            next_executors = [results.get("next_agent")] if results.get(
+                "next_agent") is not None else default_next_executors
             self.next_executables.clear()
 
         ctx.registers(results)
