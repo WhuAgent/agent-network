@@ -5,9 +5,14 @@ from agent_network.network.route import Route
 from typing import Dict, List
 from agent_network.entity.usage import UsageTime, UsageToken
 from agent_network.network.nodes.node import Node
-from agent_network.network.nodes.graph_node import GroupNode, AgentNode, ThirdPartyNode
+from agent_network.network.nodes.graph_node import GroupNode, AgentNode
+from agent_network.base import BaseAgentGroup
+from agent_network.network.nodes.node import ThirdPartyNode
 from agent_network.network.nodes.third_party.executable import ThirdPartyExecutable
 from agent_network.utils.stats import *
+import yaml
+import importlib
+import asyncio
 
 
 class Graph(Executable):
@@ -35,6 +40,43 @@ class Graph(Executable):
 
         self.clients = []
         self.third_party_nodes = {}
+
+    def load(self, config_path):
+        with open(config_path, "r", encoding="UTF-8") as f:
+            self.config = yaml.safe_load(f)
+        # 加载节点
+        for group in self.config["group_pipline"]:
+            group_config_path = list(group.values())[0]
+            with open(group_config_path, "r", encoding="utf-8") as f:
+                configs = yaml.safe_load(f)
+                if "ref_id" in configs:
+                    group = self.import_group(configs)
+                else:
+                    group = BaseAgentGroup(self, self.route, configs, self.logger)
+                agents = group.load_agents()
+
+                self.add_node(group.name, GroupNode(self, group, group.params, group.results))
+                for agent in agents:
+                    self.add_node(agent.name, AgentNode(self, agent, agent.params, agent.results, group.name))
+
+                self.add_route(group.name, group.name, group.start_agent, "start", "hard")
+                for route in group.routes:
+                    if "rule" not in route:
+                        route["rule"] = "soft"
+                    self.add_route(group.name, route["source"], route["target"], route["type"], route["rule"])
+        for client in self.clients:
+            asyncio.get_event_loop().run_until_complete(client.register(self.nodes.values()))
+        self.refresh_nodes_from_clients()
+        self.load_route()
+
+    def import_group(self, group_config):
+        if "load_type" in group_config and group_config["load_type"] == "module":
+            group_module = importlib.import_module(group_config["loadModule"])
+            group_class = getattr(group_module, group_config["loadClass"])
+            group_instance = group_class(self, self.route, group_config, self.logger)
+        else:
+            raise Exception("Group load type must be module!")
+        return group_instance
 
     def load_route(self):
         self.route = Route()

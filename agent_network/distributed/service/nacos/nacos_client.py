@@ -5,6 +5,7 @@ from v2.nacos.common.client_config import ClientConfig
 from agent_network.distributed.client import Client
 from agent_network.distributed.service_config import NodeConfig
 import json
+import asyncio
 
 
 class NacosClient(Client):
@@ -19,7 +20,7 @@ class NacosClient(Client):
         listened_node_configs = self.loads_config(content, data_id)
         self.register_nodes(listened_node_configs)
 
-    def connect(self):
+    async def connect(self):
         self.naming_client = await NacosNamingService.create_naming_service(ClientConfig(
             server_addresses=self.center_addr,
             access_key=self.access_key,
@@ -31,9 +32,9 @@ class NacosClient(Client):
             secret_key=self.secret_key,
         ))
 
-    def register(self, nodes):
+    async def register(self, nodes):
         metadata = self.get_metadata(nodes)
-        res = await self.config_client.publish_config(ConfigParam(
+        await self.config_client.publish_config(ConfigParam(
             data_id=self.service_name,
             group=self.service_group,
             content=metadata)
@@ -41,84 +42,98 @@ class NacosClient(Client):
         await self.naming_client.register_instance(
             request=RegisterInstanceParam(
                 service_name=self.service_name,
-                group_name=self.service_group,
+                # group_name=self.service_group,
                 ip=self.ip,
                 port=self.port,
                 weight=1.0,
-                cluster_name='c1',
-                metadata=metadata,
+                # cluster_name='c1',
+                # metadata=metadata,
                 enabled=True,
                 healthy=True,
             )
         )
 
-    def deregister(self):
-        res = await self.config_client.remove_config(ConfigParam(
+    async def deregister(self):
+        await self.config_client.remove_config(ConfigParam(
             data_id=self.service_name,
             group=self.service_group
         ))
-        response = await self.naming_client.deregister_instance(
+        await self.naming_client.deregister_instance(
             request=DeregisterInstanceParam(
                 service_name=self.service_name,
                 group_name=self.service_group,
                 ip=self.ip,
                 port=self.port,
-                cluster_name='c1',
+                # cluster_name='c1',
             )
         )
         for service in self.subscribed_service:
             await self.config_client.remove_listener(service, self.service_group, self.config_listener)
         self.subscribed_service.clear()
 
-    def update(self, nodes):
+    async def update(self, nodes):
         metadata = self.get_metadata(nodes)
-        response = await self.naming_client.update_instance(
+        await self.config_client.publish_config(ConfigParam(
+            data_id=self.service_name,
+            group=self.service_group,
+            content=metadata)
+        )
+        await self.naming_client.update_instance(
             request=RegisterInstanceParam(
                 service_name=self.service_name,
                 group_name=self.service_group,
                 ip=self.ip,
                 port=self.port,
-                weight=2.0,
-                cluster_name='c1',
-                metadata=metadata,
+                weight=1.0,
+                # cluster_name='c1',
+                # metadata=metadata,
                 enabled=True,
                 healthy=True
             )
         )
 
     def get_service(self, service_name, service_group) -> [NodeConfig]:
-        service = await self.naming_client.get_service(
-            GetServiceParam(service_name=service_name, group_name=service_group, cluster_name='c1'))
+        service = asyncio.get_event_loop().run_until_complete(self.naming_client.get_service(
+            GetServiceParam(service_name=service_name, group_name=service_group)))
         if service not in self.subscribed_service:
-            await self.config_client.add_listener(service, self.service_group, self.config_listener)
+            asyncio.get_event_loop().run_until_complete(
+                self.config_client.add_listener(service, self.service_group, self.config_listener))
             self.subscribed_service.append(service)
         node_configs = self.get_node_configs(service)
         return node_configs
 
     def list_service(self) -> [NodeConfig]:
-        service_list = await self.naming_client.list_services(ListServiceParam())
+        service_list = asyncio.get_event_loop().run_until_complete(self.naming_client.list_services(ListServiceParam()))
         nodes_configs = []
-        for service in service_list:
-            nodes_configs.extend(self.get_node_configs(service))
-            if service not in self.subscribed_service:
-                await self.config_client.add_listener(service, self.service_group, self.config_listener)
-                self.subscribed_service.append(service)
+        if service_list.count > 0:
+            for service in service_list.services:
+                if service == self.service_name: continue
+                nodes_configs.extend(self.get_node_configs(service))
+                if service not in self.subscribed_service:
+                    asyncio.get_event_loop().run_until_complete(
+                        self.config_client.add_listener(service, self.service_group, self.config_listener))
+                    self.subscribed_service.append(service)
         return nodes_configs
 
-    def release(self):
-        self.deregister()
+    async def release(self):
+        await self.deregister()
         await self.naming_client.shutdown()
         await self.config_client.shutdown()
 
     def get_node_configs(self, service):
-        return self.loads_config(await self.config_client.get_config(ConfigParam(
+        return self.loads_config(asyncio.get_event_loop().run_until_complete(self.config_client.get_config(ConfigParam(
             data_id=service,
             group=self.service_group
-        )), service)
+        ))), service)
 
     def loads_config(self, content, service):
-        node_configs: list[NodeConfig] = json.loads(content)
-        for node_config in node_configs:
-            node_config.service_name = service
-            node_config.service_group = self.service_group
+        node_configs_list = json.loads(content)
+        node_configs = []
+        for node_config in node_configs_list:
+            nc = NodeConfig(node_config["name"], node_config["description"],
+                            node_config["task"], node_config["params"],
+                            node_config["results"], node_config["ip"], node_config["port"])
+            nc.service_name = service
+            nc.service_group = self.service_group
+            node_configs.append(nc)
         return node_configs

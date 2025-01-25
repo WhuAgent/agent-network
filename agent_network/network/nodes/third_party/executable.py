@@ -13,7 +13,7 @@ class ThirdPartyExecutable(Executable):
         self.port = port
 
     def execute(self, input_content, **kwargs):
-        params = {"task": "123"}
+        params = {"task": "123", "node": self.name}
         response = requests.post(f"http://{self.ip}:{self.port}/service", params=params, json=json.dumps(kwargs))
         return input_content, response.json(), []
 

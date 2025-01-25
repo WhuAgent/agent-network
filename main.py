@@ -10,9 +10,8 @@ app = Flask(__name__)
 @app.route('/task', methods=['GET'])
 def task():
     current_task = request.args.get('task')
-    config_dir = "agent_network/config"
-    pipeline = Pipeline(current_task, config_dir, logger)
-    pipeline.execute(graph, current_task)
+    pipeline = Pipeline(current_task, logger)
+    pipeline.execute(graph, current_task, start_node="")
     result = pipeline.retrieve_results()
     pipeline.release()
     return result
@@ -20,11 +19,11 @@ def task():
 
 @app.route('/service', methods=['POST'])
 def task():
-    current_task = request.args.get('task')
-    context = request.args.get('context')
-    config_dir = "agent_network/config"
-    pipeline = Pipeline(current_task, config_dir, logger)
-    pipeline.execute(graph, current_task, context)
+    task = request.args.get('task')
+    node = request.args.get('node')
+    context = request.json()
+    pipeline = Pipeline(task, logger)
+    pipeline.execute(graph, task, node, context)
     result = pipeline.retrieve_results()
     pipeline.release()
     return result

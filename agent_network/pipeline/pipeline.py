@@ -1,23 +1,17 @@
 import uuid
-import yaml
-from os import _exit
 import traceback
-import importlib
 
 from agent_network.pipeline.history import History
 from agent_network.network.graph import Graph
-from agent_network.network.nodes.graph_node import GroupNode, AgentNode
 from agent_network.network.route import Route
-from agent_network.base import BaseAgentGroup
 from agent_network.pipeline.task import TaskNode
 import agent_network.pipeline.context as ctx
 from agent_network.pipeline.trace import Trace
 
 
 class Pipeline:
-    def __init__(self, task, config, logger, id=None):
+    def __init__(self, task, logger, id=None):
         self.task = task
-        self.config = config
         self.logger = logger
         self.nodes = []
         self.step = 0
@@ -27,11 +21,6 @@ class Pipeline:
             self.id = id
 
         self.trace = Trace(self.id)
-        for item in self.config["context"]:
-            if item["type"] == "str":
-                ctx.register(item["name"], self.task if item["name"] == "task" else "")
-            elif item["type"] == "list":
-                ctx.register(item["name"], [])
         self.total_time = 0
 
         self.message_num = 0
@@ -41,64 +30,60 @@ class Pipeline:
 
         ctx.register_pipeline(id, self)
 
-    def load_graph(self, graph: Graph):
-        # 加载节点
-        for group in self.config["group_pipline"]:
-            group_config_path = list(group.values())[0]
-            with open(group_config_path, "r", encoding="utf-8") as f:
-                configs = yaml.safe_load(f)
-                if "ref_id" in configs:
-                    group = self.import_group(graph, configs)
+    # def load_graph(self, graph: Graph):
+    #     # 加载节点
+    #     for group in self.config["group_pipline"]:
+    #         group_config_path = list(group.values())[0]
+    #         with open(group_config_path, "r", encoding="utf-8") as f:
+    #             configs = yaml.safe_load(f)
+    #             if "ref_id" in configs:
+    #                 group = self.import_group(graph, configs)
+    #             else:
+    #                 group = BaseAgentGroup(graph, graph.route, configs, self.logger)
+    #             agents = group.load_agents()
+    #
+    #             graph.add_node(group.name, GroupNode(graph, group, group.params, group.results))
+    #             for agent in agents:
+    #                 graph.add_node(agent.name, AgentNode(graph, agent, agent.params, agent.results, group.name))
+    #
+    #             graph.add_route(group.name, group.name, group.start_agent, "start", "hard")
+    #             for route in group.routes:
+    #                 if "rule" not in route:
+    #                     route["rule"] = "soft"
+    #                 graph.add_route(group.name, route["source"], route["target"], route["type"], route["rule"])
+    #
+    #     nodes = graph.get_nodes()
+    #     # TODO 分布式下如何处理node_messages
+    #     for node in nodes:
+    #         if system_message := graph.get_node(node).get_system_message():
+    #             self.node_messages[node] = [system_message]
+    #         else:
+    #             self.node_messages[node] = []
+    #     graph.refresh_nodes_from_clients()
+    #     graph.load_route()
+
+    # def import_group(self, graph, group_config):
+    #     if "load_type" in group_config and group_config["load_type"] == "module":
+    #         group_module = importlib.import_module(group_config["loadModule"])
+    #         group_class = getattr(group_module, group_config["loadClass"])
+    #         group_instance = group_class(graph, graph.route, group_config, self.logger)
+    #     else:
+    #         raise Exception("Group load type must be module!")
+    #     return group_instance
+
+    def execute(self, graph: Graph, task: str, start_node, context=None):
+        try:
+            nodes = graph.get_nodes()
+            # TODO 分布式下如何处理node_messages
+            for node in nodes:
+                if system_message := graph.get_node(node).get_system_message():
+                    self.node_messages[node] = [system_message]
                 else:
-                    group = BaseAgentGroup(graph, graph.route, configs, self.logger)
-                agents = group.load_agents()
-
-                graph.add_node(group.name, GroupNode(graph, group, group.params, group.results))
-                for agent in agents:
-                    graph.add_node(agent.name, AgentNode(graph, agent, agent.params, agent.results, group.name))
-
-                graph.add_route(group.name, group.name, group.start_agent, "start", "hard")
-                for route in group.routes:
-                    if "rule" not in route:
-                        route["rule"] = "soft"
-                    graph.add_route(group.name, route["source"], route["target"], route["type"], route["rule"])
-
-        nodes = graph.get_nodes()
-        # TODO 分布式下如何处理node_messages
-        for node in nodes:
-            if system_message := graph.get_node(node).get_system_message():
-                self.node_messages[node] = [system_message]
-            else:
-                self.node_messages[node] = []
-        graph.refresh_nodes_from_clients()
-        graph.load_route()
-
-    def import_group(self, graph, group_config):
-        if "load_type" in group_config and group_config["load_type"] == "module":
-            group_module = importlib.import_module(group_config["loadModule"])
-            group_class = getattr(group_module, group_config["loadClass"])
-            group_instance = group_class(graph, graph.route, group_config, self.logger)
-        else:
-            raise Exception("Group load type must be module!")
-        return group_instance
-
-    def load(self, graph: Graph):
-        if graph.route is None:
-            self.load_graph(graph)
-
-    def execute(self, graph: Graph, task: str, context=None):
-        try:
-            self.load(graph)
-        except Exception as e:
-            print(f"Agent-network load error, please check config file: {e}")
-            traceback.print_exc()
-            self.release()
-            _exit(0)
-        try:
+                    self.node_messages[node] = []
             return self._execute_graph(graph,
                                        graph.route,
                                        [TaskNode(name="start")],
-                                       [TaskNode(graph.get_node(self.config["start_node"]), task)],
+                                       [TaskNode(graph.get_node(start_node), task)],
                                        context)
         except Exception as e:
             traceback.print_exc()
@@ -115,7 +100,8 @@ class Pipeline:
             return
         self.trace.add_nodes([n.name for n in nodes])
         self.step += 1
-        max_step = self.config.get("max_step", 100)
+        # max_step = self.config.get("max_step", 100)
+        max_step = 100
         if self.step > max_step:
             self.release()
             raise Exception("Max step reached, Task Failed!")

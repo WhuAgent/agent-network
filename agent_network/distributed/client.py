@@ -1,3 +1,4 @@
+import json
 from abc import abstractmethod
 from agent_network.network.graph import Graph
 from agent_network.distributed.service_config import NodeConfig
@@ -85,4 +86,4 @@ class Client:
             }
             for node in nodes
         ]
-        return metadata
+        return json.dumps(metadata)
