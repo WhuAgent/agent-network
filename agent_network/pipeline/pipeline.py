@@ -55,7 +55,7 @@ class Pipeline:
 
                 graph.add_node(group.name, GroupNode(graph, group, group.params, group.results))
                 for agent in agents:
-                    graph.add_node(agent.name, AgentNode(graph, agent, agent.params, agent.results))
+                    graph.add_node(agent.name, AgentNode(graph, agent, agent.params, agent.results, group.name))
 
                 graph.add_route(group.name, group.name, group.start_agent, "start", "hard")
                 for route in group.routes:
@@ -64,11 +64,14 @@ class Pipeline:
                     graph.add_route(group.name, route["source"], route["target"], route["type"], route["rule"])
 
         nodes = graph.get_nodes()
+        # TODO 分布式下如何处理node_messages
         for node in nodes:
             if system_message := graph.get_node(node).get_system_message():
                 self.node_messages[node] = [system_message]
             else:
                 self.node_messages[node] = []
+        graph.refresh_nodes_from_clients()
+        graph.load_route()
 
     def import_group(self, graph, group_config):
         if "load_type" in group_config and group_config["load_type"] == "module":
@@ -79,25 +82,13 @@ class Pipeline:
             raise Exception("Group load type must be module!")
         return group_instance
 
-    def load_route(self, graph: Graph, route: Route):
-        for node_name, node_instance in graph.nodes.items():
-            if not route.node_exist(node_name):
-                route.register_node(node_name, node_instance.description)
-
-        for item in graph.routes:
-            if item["rule"] is None:
-                item["rule"] = "soft"
-            route.register_contact(item["group"], item["source"], item["target"], item["message_type"], item["rule"])
-
-    def load(self, graph: Graph, route: Route):
-        if self.step == 0:
-            graph.route = route
+    def load(self, graph: Graph):
+        if graph.route is None:
             self.load_graph(graph)
-            self.load_route(graph, route)
 
-    def execute(self, graph: Graph, route: Route, task: str, context=None):
+    def execute(self, graph: Graph, task: str, context=None):
         try:
-            self.load(graph, route)
+            self.load(graph)
         except Exception as e:
             print(f"Agent-network load error, please check config file: {e}")
             traceback.print_exc()
@@ -105,11 +96,10 @@ class Pipeline:
             _exit(0)
         try:
             return self._execute_graph(graph,
-                                       route,
+                                       graph.route,
                                        [TaskNode(name="start")],
                                        [TaskNode(graph.get_node(self.config["start_node"]), task)],
-                                       context,
-                                       True)
+                                       context)
         except Exception as e:
             traceback.print_exc()
             self.release()
@@ -120,10 +110,7 @@ class Pipeline:
                        route: Route,
                        father_nodes: list[TaskNode],
                        nodes: list[TaskNode],
-                       context=None,
-                       skip_load=False):
-        if not skip_load:
-            self.load(graph, route)
+                       context=None):
         if nodes is None or len(nodes) == 0:
             return
         self.trace.add_nodes([n.name for n in nodes])

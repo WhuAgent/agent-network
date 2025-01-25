@@ -25,7 +25,6 @@ class Node(ParameterizedExecutable):
         kwargs.update(ctx.retrieves([param["name"] for param in self.params]))
         if error_message := ctx.retrieve("graph_error_message"):
             kwargs["graph_error_message"] = error_message
-
         try:
             begin_t = datetime.now().timestamp()
             messages, results = self.executable.execute(messages, **kwargs)
@@ -68,3 +67,16 @@ class Node(ParameterizedExecutable):
     def release(self):
         if self.executable is not None:
             return self.executable.release()
+
+
+class ThirdPartyNode(Node):
+    def __init__(self, graph, executable: Executable, params, results):
+        super().__init__(graph, executable, params, results)
+
+    def execute(self, messages, **kwargs):
+        return self.executable.execute(messages, **kwargs)
+
+
+class FirstPartyNode(Node):
+    def __init__(self, graph, executable: Executable, params, results):
+        super().__init__(graph, executable, params, results)

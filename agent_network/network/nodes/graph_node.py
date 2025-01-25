@@ -1,18 +1,20 @@
 from agent_network.network.executable import Executable
-from agent_network.network.nodes.node import Node
+from agent_network.network.nodes.node import FirstPartyNode
 
 
-class GroupNode(Node):
+class GroupNode(FirstPartyNode):
     def __init__(self, graph, executable: Executable, params, results):
         super().__init__(graph, executable, params, results)
+        self.group = executable.name
 
     # def release(self):
     #     return self.executable.release()
 
 
-class AgentNode(Node):
-    def __init__(self, graph, executable: Executable, params, results):
+class AgentNode(FirstPartyNode):
+    def __init__(self, graph, executable: Executable, params, results, group):
         super().__init__(graph, executable, params, results)
+        self.group = group
 
     # def release(self):
     #     usages, time_costs = self.executable.release()

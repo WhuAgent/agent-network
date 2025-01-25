@@ -1,4 +1,7 @@
-class Route:
+from agent_network.communication.communicate import Communicate
+
+
+class Route(Communicate):
     def __init__(self):
         self.node_description = {}
         self.contact_list = dict()
@@ -62,6 +65,7 @@ class Route:
 
         return target, message
 
+    # 拿到该组注册的路由
     def forward(self, group, source, message):
         if isinstance(message, dict) and "message" in message:
             message = message["message"]
@@ -75,6 +79,19 @@ class Route:
                 targets.extend(list(self.hard_contact_list[group][source].keys()))
 
         return targets, message
+
+    def search(self, group, source, message):
+        targets, message = self.forward(group, source, message)
+        if len(targets) > 0:
+            return targets, message
+        if source in self.contact_list:
+            targets_map = self.contact_list[source]
+            targets = targets_map.keys()
+            # todo 用算法从软路由里找一些需要交流的
+            return targets, message
+
+    def execute(self, group, source, target):
+        pass
 
     def get_contactions(self, source):
         contactions = {}

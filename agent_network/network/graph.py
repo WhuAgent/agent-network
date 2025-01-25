@@ -5,7 +5,8 @@ from agent_network.network.route import Route
 from typing import Dict, List
 from agent_network.entity.usage import UsageTime, UsageToken
 from agent_network.network.nodes.node import Node
-from agent_network.network.nodes.graph_node import GroupNode, AgentNode
+from agent_network.network.nodes.graph_node import GroupNode, AgentNode, ThirdPartyNode
+from agent_network.network.nodes.third_party.executable import ThirdPartyExecutable
 from agent_network.utils.stats import *
 
 
@@ -23,7 +24,7 @@ class Graph(Executable):
 
         self.nodes = {}
         self.routes = []
-        self.route: Route = Route()
+        self.route = None
         self.total_time = 0
         self.usage_token_total_map = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0,
                                       "completion_cost": 0, "prompt_cost": 0, "total_cost": 0}
@@ -32,10 +33,27 @@ class Graph(Executable):
         self.agents_usages_time_history: Dict[str, List[UsageTime]] = {}
         self.agents_usages_token_history: Dict[str, List[UsageToken]] = {}
 
+        self.clients = []
+        self.third_party_nodes = {}
+
+    def load_route(self):
+        self.route = Route()
+        for node_name, node_instance in self.nodes.items():
+            if not self.route.node_exist(node_name):
+                self.route.register_node(node_name, node_instance.description)
+
+        for item in self.routes:
+            if item["rule"] is None:
+                item["rule"] = "soft"
+            self.route.register_contact(item["group"], item["source"], item["target"], item["message_type"], item["rule"])
+
     def execute(self, node, messages, **kwargs):
         current_ctx = ctx.retrieve_global_all()
         ctx.shared_context(current_ctx)
+        if node not in self.nodes:
+            raise Exception(f'node: {node} is absent from graph')
         messages, result, next_executables = self.nodes.get(node).execute(messages, **kwargs)
+        # TODO 通过路由自动search来找next_executables或者过滤next_executables
         ctx.registers_global(ctx.retrieves([result["name"] for result in self.results] if self.results else []))
         return messages, result, next_executables
 
@@ -45,11 +63,15 @@ class Graph(Executable):
             self.num_nodes += 1
             if isinstance(node, GroupNode):
                 self.current_groups_name.append(name)
+            if isinstance(node, ThirdPartyNode) and isinstance(node.executable, ThirdPartyExecutable):
+                third_party_node_key = node.executable.service_group + '-' + node.executable.service_name + '-' + node.name
+                self.third_party_nodes[third_party_node_key] = node
 
     def remove_node(self, name):
         # TODO NEED OPTIMIZE
         removed_nodes = []
         if name in self.nodes:
+            # TODO 删除三方节点
             node = self.get_node(name)
             if isinstance(node, GroupNode):
                 total_usage = {
@@ -174,7 +196,39 @@ class Graph(Executable):
         self.nodes = {}
         self.routes = []
         self.num_nodes = 0
+        for client in self.clients:
+            client.release()
         return self.usage_token_total_map, self.total_time
+
+    def refresh_nodes_from_clients(self):
+        for client in self.clients:
+            client.update_all_services_nodes()
+
+    def register_clients(self, clients):
+        self.clients.extend(clients)
+
+    def refresh_third_party_nodes(self, service_name, service_group, nodes):
+        third_party_node_key_prefix = service_group + '-' + service_name
+        third_party_exist_nodes = [third_party_exist_node for third_party_exist_node in self.third_party_nodes.keys() if third_party_node_key_prefix in third_party_exist_node]
+        for node in nodes:
+            if not self.node_exists(node.name):
+                self.add_node(node.name, node.executable)
+            third_party_exist_nodes.remove(third_party_node_key_prefix + '-' + node.name)
+        for third_party_exist_node in third_party_exist_nodes:
+            self.remove_third_party_node(service_name, service_group, third_party_exist_node.split['-'][2])
+
+    def remove_third_party_nodes(self, service_name, service_group):
+        third_party_node_key_prefix = service_group + '-' + service_name
+        for third_party_node in self.third_party_nodes.keys():
+            if third_party_node_key_prefix in third_party_node:
+                del self.third_party_nodes[third_party_node]
+                self.remove_common(third_party_node.split['-'][2])
+
+    def remove_third_party_node(self, service_name, service_group, name):
+        third_party_node_key = service_group + '-' + service_name + '-' + name
+        if third_party_node_key in self.third_party_nodes:
+            del self.third_party_nodes[third_party_node_key]
+            self.remove_common(name)
 
 
 # TODO 基于感知层去调度graph及其智能体
