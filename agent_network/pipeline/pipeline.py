@@ -147,7 +147,7 @@ class Pipeline:
         return ctx.retrieve_global(key)
 
     def retrieve_results(self):
-        return ctx.retrieve_global_all()
+        return {key: value for key, value in ctx.retrieve_global_all().items()}
 
     def release(self):
         total_token_num = 0

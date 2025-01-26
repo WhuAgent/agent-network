@@ -106,7 +106,7 @@ class Graph(Executable):
             if isinstance(node, GroupNode):
                 self.current_groups_name.append(name)
             if isinstance(node, ThirdPartyNode) and isinstance(node.executable, ThirdPartyExecutable):
-                third_party_node_key = node.executable.service_group + '-' + node.executable.service_name + '-' + node.name
+                third_party_node_key = node.executable.service_group + '&&' + node.executable.service_name + '&&' + node.name
                 self.third_party_nodes[third_party_node_key] = node
 
     def remove_node(self, name):
@@ -250,24 +250,25 @@ class Graph(Executable):
         self.clients.extend(clients)
 
     def refresh_third_party_nodes(self, service_name, service_group, nodes):
-        third_party_node_key_prefix = service_group + '-' + service_name
+        third_party_node_key_prefix = service_group + '&&' + service_name
         third_party_exist_nodes = [third_party_exist_node for third_party_exist_node in self.third_party_nodes.keys() if third_party_node_key_prefix in third_party_exist_node]
         for node in nodes:
             if not self.node_exists(node.name):
-                self.add_node(node.name, node.executable)
-            third_party_exist_nodes.remove(third_party_node_key_prefix + '-' + node.name)
+                self.add_node(node.name, node)
+            else:
+                third_party_exist_nodes.remove(third_party_node_key_prefix + '&&' + node.name)
         for third_party_exist_node in third_party_exist_nodes:
-            self.remove_third_party_node(service_name, service_group, third_party_exist_node.split['-'][2])
+            self.remove_third_party_node(service_name, service_group, third_party_exist_node.split['&&'][2])
 
     def remove_third_party_nodes(self, service_name, service_group):
-        third_party_node_key_prefix = service_group + '-' + service_name
+        third_party_node_key_prefix = service_group + '&&' + service_name
         for third_party_node in self.third_party_nodes.keys():
             if third_party_node_key_prefix in third_party_node:
                 del self.third_party_nodes[third_party_node]
-                self.remove_common(third_party_node.split['-'][2])
+                self.remove_common(third_party_node.split['&&'][2])
 
     def remove_third_party_node(self, service_name, service_group, name):
-        third_party_node_key = service_group + '-' + service_name + '-' + name
+        third_party_node_key = service_group + '&&' + service_name + '&&' + name
         if third_party_node_key in self.third_party_nodes:
             del self.third_party_nodes[third_party_node_key]
             self.remove_common(name)

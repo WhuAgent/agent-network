@@ -21,7 +21,7 @@ def task():
 def task():
     task = request.args.get('task')
     node = request.args.get('node')
-    context = request.json()
+    context = request.json
     pipeline = Pipeline(task, logger)
     pipeline.execute(graph, task, node, context)
     result = pipeline.retrieve_results()

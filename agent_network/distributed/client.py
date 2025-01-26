@@ -1,9 +1,11 @@
 import json
+import time
 from abc import abstractmethod
 from agent_network.network.graph import Graph
 from agent_network.distributed.service_config import NodeConfig
 from agent_network.network.nodes.node import ThirdPartyNode
 from agent_network.network.nodes.third_party.executable import ThirdPartyExecutable
+import threading
 
 
 class Client:
@@ -58,10 +60,10 @@ class Client:
         for third_party_node in third_party_nodes:
             service_name = third_party_node.executable.service_name
             service_group = third_party_node.executable.service_group
-            third_party_nodes_map.setdefault(service_name + '-' + service_group, [])
-            third_party_nodes_map[service_name + '-' + service_group].append(third_party_node)
+            third_party_nodes_map.setdefault(service_name + '&&' + service_group, [])
+            third_party_nodes_map[service_name + '&&' + service_group].append(third_party_node)
         for service_key in third_party_nodes_map.keys():
-            service_key_splits = service_key.split('-')
+            service_key_splits = service_key.split('&&')
             self.graph.refresh_third_party_nodes(service_key_splits[0], service_key_splits[1],
                                                  third_party_nodes_map[service_key])
 
@@ -72,6 +74,16 @@ class Client:
     def update_all_services_nodes(self):
         node_configs = self.list_service()
         self.register_nodes(node_configs)
+        self.recycle_update_all_services_nodes()
+
+    def recycle_update_all_services_nodes(self):
+        def recycle_list_service():
+            while True:
+                self.list_service()
+                time.sleep(5)
+
+        update_all_thread = threading.Thread(target=recycle_list_service)
+        update_all_thread.start()
 
     def get_metadata(self, nodes):
         metadata = [

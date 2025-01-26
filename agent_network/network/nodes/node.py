@@ -73,9 +73,6 @@ class ThirdPartyNode(Node):
     def __init__(self, graph, executable: Executable, params, results):
         super().__init__(graph, executable, params, results)
 
-    def execute(self, messages, **kwargs):
-        return self.executable.execute(messages, **kwargs)
-
 
 class FirstPartyNode(Node):
     def __init__(self, graph, executable: Executable, params, results):
