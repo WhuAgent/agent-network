@@ -87,7 +87,8 @@ class Graph(Executable):
         for item in self.routes:
             if item["rule"] is None:
                 item["rule"] = "soft"
-            self.route.register_contact(item["group"], item["source"], item["target"], item["message_type"], item["rule"])
+            self.route.register_contact(item["group"], item["source"], item["target"], item["message_type"],
+                                        item["rule"])
 
     def execute(self, node, messages, **kwargs):
         current_ctx = ctx.retrieve_global_all()
@@ -108,8 +109,10 @@ class Graph(Executable):
             if isinstance(node, ThirdPartyNode) and isinstance(node.executable, ThirdPartyExecutable):
                 third_party_node_key = node.executable.service_group + '&&' + node.executable.service_name + '&&' + node.name
                 self.third_party_nodes[third_party_node_key] = node
+            self.logger.log("Agent-Network-Graph",
+                            f"NODE: {name} TYPE: {type(node).__name__} has been added to the graph", self.name)
 
-    def remove_node(self, name):
+    def remove_node(self, name, release=False):
         # TODO NEED OPTIMIZE
         removed_nodes = []
         if name in self.nodes:
@@ -148,8 +151,10 @@ class Graph(Executable):
                             self.total_time += total_time
                             self.agents_usages_time_history[agent_name] = agent_usages_time
                             self.agents_usages_token_history[agent_name] = agent_usages_token
-                            self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} TOKEN TOTAL: {usage_token_total_map}", self.name)
-                            self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} TIME COST TOTAL: {total_time}", self.name)
+                            self.logger.log("Agent-Network-Graph",
+                                            f"AGENT: {agent_name} TOKEN TOTAL: {usage_token_total_map}", self.name)
+                            self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} TIME COST TOTAL: {total_time}",
+                                            self.name)
                             self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} has been removed", self.name)
                             self.remove_common(agent_name)
                             removed_nodes.append(agent_name)
@@ -175,6 +180,7 @@ class Graph(Executable):
                 self.logger.log("Agent-Network-Graph", f"GROUP: {name} TIME COST TOTAL: {total_time}", self.name)
                 self.logger.log("Agent-Network-Graph", f"GROUP: {name} has been removed from graph {self.name}",
                                 self.name)
+                self.remove_common(name)
             elif isinstance(node, AgentNode):
                 for group in self.current_groups_name:
                     group_node = self.get_node(group)
@@ -194,9 +200,12 @@ class Graph(Executable):
                 self.logger.log("Agent-Network-Graph", f"AGENT: {name} TIME COST TOTAL: {total_time}", self.name)
                 self.logger.log("Agent-Network-Graph", f"AGENT: {name} has been removed from graph {self.name}",
                                 self.name)
-            self.remove_common(name)
+                self.remove_common(name)
+            elif isinstance(node, ThirdPartyNode) and not release:
+                raise Exception(f"can not remove third party node: {name}")
             removed_nodes.append(name)
-            self.logger.log("Agent-Network-Graph", f"NODE: {name} has been removed from graph: {self.name}", self.name)
+            self.logger.log("Agent-Network-Graph",
+                            f"NODE: {name} TYPE: {type(node).__name__} has been removed from the graph", self.name)
             return removed_nodes
 
     def remove_common(self, name):
@@ -230,7 +239,7 @@ class Graph(Executable):
         for node in list(self.nodes.keys()):
             if node in total_removed_nodes:
                 continue
-            removed_nodes = self.remove_node(node)
+            removed_nodes = self.remove_node(node, True)
             total_removed_nodes.extend(removed_nodes)
         self.logger.log("Agent-Network-Graph", f"GRAPH TOKEN TOTAL: {self.usage_token_total_map}", self.name)
         self.logger.log("Agent-Network-Graph", f"GRAPH TIME COST TOTAL: {self.total_time}", self.name)
@@ -251,7 +260,8 @@ class Graph(Executable):
 
     def refresh_third_party_nodes(self, service_name, service_group, nodes):
         third_party_node_key_prefix = service_group + '&&' + service_name
-        third_party_exist_nodes = [third_party_exist_node for third_party_exist_node in self.third_party_nodes.keys() if third_party_node_key_prefix in third_party_exist_node]
+        third_party_exist_nodes = [third_party_exist_node for third_party_exist_node in self.third_party_nodes.keys() if
+                                   third_party_node_key_prefix in third_party_exist_node]
         for node in nodes:
             if not self.node_exists(node.name):
                 self.add_node(node.name, node)
@@ -262,20 +272,24 @@ class Graph(Executable):
 
     def remove_third_party_nodes(self, service_name, service_group):
         third_party_node_key_prefix = service_group + '&&' + service_name
-        for third_party_node in self.third_party_nodes.keys():
+        for third_party_node in list(self.third_party_nodes.keys()):
             if third_party_node_key_prefix in third_party_node:
                 del self.third_party_nodes[third_party_node]
                 # self.remove_common(third_party_node.split('&&')[2])
                 del self.nodes[third_party_node.split('&&')[2]]
                 self.num_nodes -= 1
+                self.logger.log("Agent-Network-Graph",
+                                f"NODE: {third_party_node} TYPE: ThirdPartyNode has been removed from the graph", self.name)
 
     def remove_third_party_node(self, service_name, service_group, name):
         third_party_node_key = service_group + '&&' + service_name + '&&' + name
-        if third_party_node_key in self.third_party_nodes:
+        if third_party_node_key in list(self.third_party_nodes.keys()):
             del self.third_party_nodes[third_party_node_key]
             # self.remove_common(name)
             del self.nodes[name]
             self.num_nodes -= 1
+            self.logger.log("Agent-Network-Graph",
+                            f"NODE: {third_party_node_key} TYPE: ThirdPartyNode has been removed from the graph", self.name)
 
 
 # TODO 基于感知层去调度graph及其智能体

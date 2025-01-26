@@ -11,6 +11,7 @@ import asyncio
 logger = Logger("log")
 network = Network('agent-network', None, None, None)
 graph = Graph('graph', None, None, None, None, None, logger)
+network.add_graph(graph.name, graph)
 
 
 def load():

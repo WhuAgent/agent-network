@@ -31,6 +31,7 @@ class Client:
     def deregister(self):
         pass
 
+    # TODO 在graph发生动态变化时调用
     @abstractmethod
     def update(self, nodes):
         pass

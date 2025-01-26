@@ -92,11 +92,11 @@ class NacosClient(Client):
         # if
         return res.json()['data']
 
-    async def deregister(self):
+    def deregister(self):
         self.nacos_client.remove_config(self.service_name, self.service_group)
         self.nacos_client.remove_naming_instance(self.service_name, self.ip, self.port, group_name=self.service_group)
-        for service in self.subscribed_service:
-            self.nacos_client.remove_config_watcher(service, self.service_group, self.config_listener)
+        # for service in self.subscribed_service:
+        #     self.nacos_client.remove_config_watcher(service, self.service_group, self.config_listener)
         # await self.config_client.remove_config(ConfigParam(
         #     data_id=self.service_name,
         #     group=self.service_group
@@ -114,7 +114,7 @@ class NacosClient(Client):
         #     await self.config_client.remove_listener(service, self.service_group, self.config_listener)
         self.subscribed_service.clear()
 
-    async def update(self, nodes):
+    def update(self, nodes):
         metadata = self.get_metadata(nodes)
         self.nacos_client.publish_config(self.service_name, self
                                          .service_group, metadata)
@@ -163,17 +163,18 @@ class NacosClient(Client):
                 if service not in self.subscribed_service:
                     # asyncio.get_event_loop().run_until_complete(
                     #     self.config_client.add_listener(service, self.service_group, self.config_listener))
-                    self.nacos_client.add_config_watcher(service, self.service_group, self.config_listener)
+                    # self.nacos_client.add_config_watcher(service, self.service_group, self.config_listener)
                     self.subscribed_service.append(service)
-        services_to_be_deleted = [service for service in self.subscribed_service if service not in service_list['services']]
+        services_to_be_deleted = [service for service in self.subscribed_service if
+                                  service not in service_list['services']]
         for service_to_be_deleted in services_to_be_deleted:
             self.graph.remove_third_party_nodes(service_to_be_deleted, self.service_group)
         return nodes_configs
 
-    async def release(self):
-        await self.deregister()
-        await self.naming_client.shutdown()
-        await self.config_client.shutdown()
+    def release(self):
+        self.deregister()
+        # await self.naming_client.shutdown()
+        # await self.config_client.shutdown()
 
     def get_node_configs(self, service):
         # return self.loads_config(asyncio.get_event_loop().run_until_complete(self.config_client.get_config(ConfigParam(
@@ -183,6 +184,8 @@ class NacosClient(Client):
         return self.loads_config(self.nacos_client.get_config(service, self.service_group), service)
 
     def loads_config(self, content, service):
+        if content is None:
+            return []
         node_configs_list = json.loads(content)
         node_configs = []
         for node_config in node_configs_list:
