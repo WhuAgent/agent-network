@@ -79,7 +79,8 @@ class Client:
     def recycle_update_all_services_nodes(self):
         def recycle_list_service():
             while True:
-                self.list_service()
+                node_configs = self.list_service()
+                self.register_nodes(node_configs)
                 time.sleep(5)
 
         update_all_thread = threading.Thread(target=recycle_list_service)

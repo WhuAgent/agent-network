@@ -165,6 +165,9 @@ class NacosClient(Client):
                     #     self.config_client.add_listener(service, self.service_group, self.config_listener))
                     self.nacos_client.add_config_watcher(service, self.service_group, self.config_listener)
                     self.subscribed_service.append(service)
+        services_to_be_deleted = [service for service in self.subscribed_service if service not in service_list['services']]
+        for service_to_be_deleted in services_to_be_deleted:
+            self.graph.remove_third_party_nodes(service_to_be_deleted, self.service_group)
         return nodes_configs
 
     async def release(self):

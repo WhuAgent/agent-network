@@ -265,13 +265,17 @@ class Graph(Executable):
         for third_party_node in self.third_party_nodes.keys():
             if third_party_node_key_prefix in third_party_node:
                 del self.third_party_nodes[third_party_node]
-                self.remove_common(third_party_node.split['&&'][2])
+                # self.remove_common(third_party_node.split('&&')[2])
+                del self.nodes[third_party_node.split('&&')[2]]
+                self.num_nodes -= 1
 
     def remove_third_party_node(self, service_name, service_group, name):
         third_party_node_key = service_group + '&&' + service_name + '&&' + name
         if third_party_node_key in self.third_party_nodes:
             del self.third_party_nodes[third_party_node_key]
-            self.remove_common(name)
+            # self.remove_common(name)
+            del self.nodes[name]
+            self.num_nodes -= 1
 
 
 # TODO 基于感知层去调度graph及其智能体
