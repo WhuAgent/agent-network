@@ -3,7 +3,7 @@
 # from v2.nacos.common.client_config import ClientConfig
 import nacos
 from agent_network.distributed.client import Client
-from agent_network.distributed.service_config import NodeConfig
+from agent_network.distributed.service.service_config import NodeConfig
 import json
 import requests
 import time

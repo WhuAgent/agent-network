@@ -2,7 +2,7 @@ import json
 import time
 from abc import abstractmethod
 from agent_network.network.graph import Graph
-from agent_network.distributed.service_config import NodeConfig
+from agent_network.distributed.service.service_config import NodeConfig
 from agent_network.network.nodes.node import ThirdPartyNode
 from agent_network.network.nodes.third_party.executable import ThirdPartyExecutable
 import threading
