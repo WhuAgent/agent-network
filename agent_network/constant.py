@@ -18,7 +18,7 @@ def load():
     try:
         service_configs = []
         service_clients = []
-        service_config_path = os.path.join(os.getcwd(), 'agent_network/config/service.yml')
+        service_config_path = os.path.join(os.getcwd(), 'config/service.yml')
         if os.path.exists(service_config_path):
             with open(service_config_path, "r", encoding="UTF-8") as f:
                 service_config = yaml.safe_load(f)
@@ -26,6 +26,8 @@ def load():
         for service_config in service_configs:
             if 'center_type' in service_config:
                 pass
+            elif 'enabled' in service_config and not bool(service_config['enabled']):
+                continue
             else:
                 service_client = NacosClient(
                     graph=graph,
@@ -42,7 +44,7 @@ def load():
                 # service_client.update_all_services_nodes()
                 service_clients.append(service_client)
         graph.register_clients(service_clients)
-        graph.load("agent_network/config/graph.yaml")
+        graph.load("config/graph.yaml")
     except Exception as e:
         print(f"Agent-network load error, please check config file: {e}")
         traceback.print_exc()

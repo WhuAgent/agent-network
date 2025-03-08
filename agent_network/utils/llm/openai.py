@@ -4,7 +4,7 @@ from openai import OpenAI
 
 from agent_network.utils.llm.message import Message, OpenAIMessage
 
-openai_config_path = os.path.join(os.getcwd(), 'agent_network/config/openai.yml')
+openai_config_path = os.path.join(os.getcwd(), 'config/openai.yml')
 with open(openai_config_path, "r", encoding="UTF-8") as f:
     openai_config = yaml.safe_load(f)
 

@@ -18,12 +18,12 @@ def task():
 
 
 @app.route('/service', methods=['POST'])
-def task():
-    task = request.args.get('task')
-    node = request.args.get('node')
+def service():
     context = request.json
-    pipeline = Pipeline(task, logger)
-    pipeline.execute(graph, task, node, context)
+    assert context['flowId'] is not None, "智能体流程节点未找到"
+    assert context['task'] is not None, "智能体任务未找到"
+    pipeline = Pipeline(context['task'], logger)
+    pipeline.execute(graph, context['task'], context['flowId'], context['params'])
     result = pipeline.retrieve_results()
     pipeline.release()
     return result
