@@ -181,6 +181,7 @@ class OpenAIMessage(Message):
         super().__init__("assistant", content)
 
         self.model = model
+        self.openai_usage = openai_usage
         self.prompt_token_num = openai_usage.prompt_tokens
         self.prompt_token_cost = model_cost[self.model]["prompt_token"] * self.prompt_token_num / 1000
         self.completion_token_num = openai_usage.completion_tokens

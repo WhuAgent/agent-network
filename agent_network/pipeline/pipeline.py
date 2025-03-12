@@ -57,7 +57,7 @@ class Pipeline:
                 for agent in agents:
                     graph.add_node(agent.name, AgentNode(graph, agent, agent.params, agent.results))
 
-                graph.add_route(group.name, group.name, group.start_agent, "start", "hard")
+                graph.add_route(group.name, group.name, group.start_agent, "start", "soft")
                 for route in group.routes:
                     if "rule" not in route:
                         route["rule"] = "soft"
