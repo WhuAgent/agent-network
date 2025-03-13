@@ -4,8 +4,8 @@ from agent_network.utils.llm.message import Message
 
 thread_local_data = threading.local()
 global_map = {}
-pipeline_key = "$$$$$Pipeline$$$$$"
-pipeline_id_key = "$$$$$PipelineID$$$$$"
+graph_key = "$$$$$Graph$$$$$"
+graph_id_key = "$$$$$GraphID$$$$$"
 
 
 def register_global(key, value):
@@ -81,48 +81,48 @@ def delete(key):
     thread_local_data.context.pop(key)
 
 
-def register_pipeline(id, pipeline):
-    if retrieve(pipeline_key) is not None or retrieve(pipeline_id_key) is not None:
-        raise Exception("pipeline register duplicated")
-    register(pipeline_key, pipeline)
-    register(pipeline_id_key, id)
+def register_graph(id, graph):
+    if retrieve(graph_key) is not None or retrieve(graph_id_key) is not None:
+        raise Exception("graph register duplicated")
+    register(graph_key, graph)
+    register(graph_id_key, id)
 
 
-def retrieve_pipline():
-    pipeline = retrieve(pipeline_key)
-    if pipeline is None:
-        raise Exception("pipeline is not within current context")
-    return pipeline
+def retrieve_graph():
+    graph = retrieve(graph_key)
+    if graph is None:
+        raise Exception("graph is not within current context")
+    return graph
 
 
-def retrieve_pipline_id():
-    pipeline_id = retrieve(pipeline_id_key)
-    if pipeline_id is None:
-        raise Exception("pipeline id is not within current context")
-    return pipeline_id
+def retrieve_graph_id():
+    graph_id = retrieve(graph_id_key)
+    if graph_id is None:
+        raise Exception("graph id is not within current context")
+    return graph_id
 
 
 def register_time(time_cost):
-    pipeline = retrieve(pipeline_key)
-    if pipeline is None:
-        raise Exception("pipeline is not in the current context")
+    graph = retrieve(graph_key)
+    if graph is None:
+        raise Exception("graph is not in the current context")
 
-    pipeline.cur_execution.time_cost = time_cost
+    graph.cur_execution.time_cost = time_cost
 
-    pipeline.total_time += time_cost
+    graph.total_time += time_cost
 
-    pipeline.logger.log("network", f"AGENT {pipeline.cur_execution.cur_executor.name} time cost: {time_cost}", "Agent-Network")
+    graph.logger.log("network", f"AGENT {graph.cur_execution.cur_executor.id} time cost: {time_cost}", "Agent-Network")
 
 
 def register_llm_action(messages: list[Message]):
-    pipeline = retrieve(pipeline_key)
-    if pipeline is None:
-        raise Exception("pipeline is not in the current context")
-    node = pipeline.cur_execution.cur_executor.name
+    graph = retrieve(graph_key)
+    if graph is None:
+        raise Exception("graph is not in the current context")
+    vertex = graph.cur_execution.cur_executor.id
 
-    for i in range(len(pipeline.node_messages[node]), len(messages)):
-        pipeline.node_messages[node].append(messages[i])
+    for i in range(len(graph.vertex_messages[vertex]), len(messages)):
+        graph.vertex_messages[vertex].append(messages[i])
     
-    for i in range(pipeline.message_num, len(messages)):
-        pipeline.cur_execution.llm_messages.append(messages[i])
-        pipeline.message_num += 1
+    for i in range(graph.message_num, len(messages)):
+        graph.cur_execution.llm_messages.append(messages[i])
+        graph.message_num += 1

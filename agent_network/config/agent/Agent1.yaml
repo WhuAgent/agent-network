@@ -1,0 +1,36 @@
+# agent 的名称
+id: "Agent1"
+# 对 agent 的详细描述
+description: "智能体1"
+# agent 角色扮演相关
+title: "Agent1"
+# agent 关键词
+keywords: [ "微信", "签名", "微信服务号信息服务" ]
+# agent 用户手册
+manual: "http://wechat.com/xxxx.html"
+
+model: "gpt-3.5-turbo"
+
+# 执行上下文参数
+params:
+  - name: "number1"
+    type: "str"
+  - name: "number2"
+    type: "str"
+  - name: "true_result"
+    type: "str"
+
+# 执行上下文结果
+results:
+  - name: "result"
+    title: "计算结果"
+    notnull: true
+    description: ""
+    defaultValue: ""
+    type: "String"
+  - name: "bool_result"
+    type: "str"
+
+# agent 的 prompt
+prompt:
+    Calculate the sum of two numbers and output the result directly without adding any other characters.

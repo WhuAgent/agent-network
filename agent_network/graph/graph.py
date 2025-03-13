@@ -1,19 +1,18 @@
 import uuid
 import traceback
 
-from agent_network.pipeline.history import History
-from agent_network.network.graph import Graph
+from agent_network.graph.history import History
+from agent_network.network.network import Network
 from agent_network.network.route import Route
-from agent_network.pipeline.task import TaskNode
-import agent_network.pipeline.context as ctx
-from agent_network.pipeline.trace import Trace
+from agent_network.graph.task_vertex import TaskVertex
+import agent_network.graph.context as ctx
+from agent_network.graph.trace import Trace
 
 
-class Pipeline:
-    def __init__(self, task, logger, id=None):
-        self.task = task
+class Graph:
+    def __init__(self, logger, id=None):
         self.logger = logger
-        self.nodes = []
+        self.vertexes = []
         self.step = 0
         if id is None:
             self.id = str(uuid.uuid4())
@@ -26,11 +25,11 @@ class Pipeline:
         self.message_num = 0
         self.execution_history: list[History] = []
         self.cur_execution = None
-        self.node_messages = dict()
+        self.vertex_messages = dict()
 
-        ctx.register_pipeline(id, self)
+        ctx.register_graph(id, self)
 
-    # def load_graph(self, graph: Graph):
+    # def load_graph(self, graph: Network):
     #     # 加载节点
     #     for group in self.config["group_pipline"]:
     #         group_config_path = list(group.values())[0]
@@ -42,9 +41,9 @@ class Pipeline:
     #                 group = BaseAgentGroup(graph, graph.route, configs, self.logger)
     #             agents = group.load_agents()
     #
-    #             graph.add_node(group.name, GroupNode(graph, group, group.params, group.results))
+    #             graph.add_vertex(group.name, GroupNode(graph, group, group.params, group.results))
     #             for agent in agents:
-    #                 graph.add_node(agent.name, AgentNode(graph, agent, agent.params, agent.results, group.name))
+    #                 graph.add_vertex(agent.name, AgentNode(graph, agent, agent.params, agent.results, group.name))
     #
     #             graph.add_route(group.name, group.name, group.start_agent, "start", "hard")
     #             for route in group.routes:
@@ -52,14 +51,14 @@ class Pipeline:
     #                     route["rule"] = "soft"
     #                 graph.add_route(group.name, route["source"], route["target"], route["type"], route["rule"])
     #
-    #     nodes = graph.get_nodes()
-    #     # TODO 分布式下如何处理node_messages
-    #     for node in nodes:
-    #         if system_message := graph.get_node(node).get_system_message():
-    #             self.node_messages[node] = [system_message]
+    #     vertexes = graph.get_vertexes()
+    #     # TODO 分布式下如何处理vertex_messages
+    #     for vertex in vertexes:
+    #         if system_message := graph.get_vertex(vertex).get_system_message():
+    #             self.vertex_messages[vertex] = [system_message]
     #         else:
-    #             self.node_messages[node] = []
-    #     graph.refresh_nodes_from_clients()
+    #             self.vertex_messages[vertex] = []
+    #     graph.refresh_vertexes_from_clients()
     #     graph.load_route()
 
     # def import_group(self, graph, group_config):
@@ -71,19 +70,19 @@ class Pipeline:
     #         raise Exception("Group load type must be module!")
     #     return group_instance
 
-    def execute(self, graph: Graph, task: str, start_node, context=None):
+    def execute(self, network: Network, start_vertex, context=None):
         try:
-            nodes = graph.get_nodes()
-            # TODO 分布式下如何处理node_messages
-            for node in nodes:
-                if system_message := graph.get_node(node).get_system_message():
-                    self.node_messages[node] = [system_message]
+            vertexes = network.get_vertexes()
+            # TODO 分布式下如何处理vertex_messages
+            for vertex in vertexes:
+                if system_message := network.get_vertex(vertex).get_system_message():
+                    self.vertex_messages[vertex] = [system_message]
                 else:
-                    self.node_messages[node] = []
-            return self._execute_graph(graph,
-                                       graph.route,
-                                       [TaskNode(name="start")],
-                                       [TaskNode(graph.get_node(start_node), task)],
+                    self.vertex_messages[vertex] = []
+            return self._execute_graph(network,
+                                       network.route,
+                                       [TaskVertex(id="start")],
+                                       [TaskVertex(network.get_vertex(start_vertex))],
                                        context)
         except Exception as e:
             traceback.print_exc()
@@ -91,14 +90,14 @@ class Pipeline:
             raise Exception(e)
 
     def _execute_graph(self,
-                       graph: Graph,
+                       network: Network,
                        route: Route,
-                       father_nodes: list[TaskNode],
-                       nodes: list[TaskNode],
+                       father_task_vertexes: list[TaskVertex],
+                       task_vertexes: list[TaskVertex],
                        context=None):
-        if nodes is None or len(nodes) == 0:
+        if task_vertexes is None or len(task_vertexes) == 0:
             return
-        self.trace.add_nodes([n.name for n in nodes])
+        self.trace.add_vertexes([n.id for n in task_vertexes])
         self.step += 1
         # max_step = self.config.get("max_step", 100)
         max_step = 100
@@ -108,37 +107,44 @@ class Pipeline:
         if context:
             ctx.registers(context)
         # TODO 由感知层根据任务激活决定触发哪些 Agent，现在默认线性执行所有 TaskNode
-        next_nodes: list[TaskNode] = []
-        for node in nodes:
+        next_task_vertexes: list[TaskVertex] = []
+        for task_vertex in task_vertexes:
+            current_next_task_vertexes = []
             # todo 讨论是否需要合并message到上下文中
-            messages = self.node_messages[node.name]
+            messages = self.vertex_messages[task_vertex.id]
             try:
                 len_message = len(messages)
 
-                self.execution_history.append(History(pre_executors=father_nodes, cur_executor=node))
+                self.execution_history.append(History(pre_executors=father_task_vertexes, cur_executor=task_vertex))
                 self.cur_execution = self.execution_history[-1]
 
-                messages, result, next_executables = graph.execute(node.name, messages)
+                messages, result, next_executables = network.execute(task_vertex.id, messages)
 
                 self.cur_execution.llm_messages = messages[len_message:]
                 self.cur_execution.next_executors = next_executables
 
                 # self.load_route(graph, route)
                 if next_executables is None:
-                    continue
-                for next_executable in next_executables:
-                    next_executable, message = route.forward_message(node.name, next_executable, result)
-                    # if not leaf node
-                    if message != "COMPLETE":
-                        next_task_node = TaskNode(graph.get_node(next_executable), message)
-                        next_nodes.append(next_task_node)
-                self.trace.add_spans(node.name, [nn for nn in next_executables], messages, result)
+                    # 根据result和当前节点执行动态路由搜索逻辑
+                    targets, message = route.search(task_vertex.id, result)
+                    for target in targets:
+                        next_task_vertex = TaskVertex(network.get_vertex(target), message)
+                        current_next_task_vertexes.append(next_task_vertex)
+                else:
+                    for next_executable in next_executables:
+                        next_executable, message = route.forward_message(task_vertex.id, next_executable, result)
+                        # if not leaf vertex
+                        if message != "COMPLETE":
+                            next_task_vertex = TaskVertex(network.get_vertex(next_executable), message)
+                            current_next_task_vertexes.append(next_task_vertex)
+                self.trace.add_spans(task_vertex.id, [nv.id for nv in current_next_task_vertexes], messages, result)
+                next_task_vertexes.extend(current_next_task_vertexes)
             except Exception as e:
                 self.release()
                 raise Exception(e)
 
-        self._execute_graph(graph, route, nodes, next_nodes)
-        return ctx.retrieve_global_all()
+        self._execute_graph(network, route, task_vertexes, next_task_vertexes)
+        return ctx.retrieves_all()
 
     def register_time_cost(self, time_cost):
         self.total_time += time_cost
@@ -174,6 +180,6 @@ class Pipeline:
         self.message_num = 0
         self.execution_history: list[History] = []
         self.cur_execution = None
-        self.node_messages = dict()
+        self.vertex_messages = dict()
 
         return total_token_num, total_token_cost, total_time

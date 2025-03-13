@@ -3,10 +3,8 @@ from datetime import datetime
 
 
 class Executable:
-    # todo delete task
-    def __init__(self, name, task, description):
-        self.name = name
-        self.task = task
+    def __init__(self, id, description):
+        self.id = id
         self.description = description
         self.create_time = datetime.now().timestamp()
 
@@ -20,8 +18,8 @@ class Executable:
 
 
 class ParameterizedExecutable(Executable):
-    def __init__(self, name, task, description, params, results):
-        super().__init__(name, task, description)
+    def __init__(self, id, description, params, results):
+        super().__init__(id, description)
         self.params = params
         self.results = results
         self.description = description

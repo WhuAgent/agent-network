@@ -1,32 +1,31 @@
 from datetime import datetime
 from agent_network.network.executable import Executable, ParameterizedExecutable
 from agent_network.base import BaseAgent
-import agent_network.pipeline.context as ctx
+import agent_network.graph.context as ctx
 from agent_network.exceptions import RetryError, ReportError
 
 
-class Node(ParameterizedExecutable):
-    def __init__(self, graph, executable: Executable, params, results):
-        super().__init__(executable.name, executable.task, executable.description, params, results)
-        self.name = executable.name
-        self.task = executable.task
+class Vertex(ParameterizedExecutable):
+    def __init__(self, network, executable: Executable, params, results):
+        super().__init__(executable.id, executable.description, params, results)
+        self.name = executable.id
         self.description = executable.description
         self.executable = executable
         # todo 移除防止资源竞争
         self.next_executables: list[str] = []
-        self.graph = graph
+        self.network = network
 
     def get_system_message(self):
         if isinstance(self.executable, BaseAgent):
             return self.executable.system_message
         return None
 
-    def execute(self, messages, **kwargs):
+    def execute(self, messages=None, **kwargs):
         kwargs.update(ctx.retrieves([param["name"] for param in self.params]))
         if error_message := ctx.retrieve("graph_error_message"):
             kwargs["graph_error_message"] = error_message
+        begin_t = datetime.now().timestamp()
         try:
-            begin_t = datetime.now().timestamp()
             messages, results = self.executable.execute(messages, **kwargs)
         except RetryError as e:
             end_t = datetime.now().timestamp()
@@ -43,7 +42,7 @@ class Node(ParameterizedExecutable):
             end_t = datetime.now().timestamp()
             ctx.register_time(end_t - begin_t)
             results = e.error_message
-            next_executors = [e.next_node]
+            next_executors = [e.next_vertex]
             ctx.register("graph_error_message", [e.error_message])
             return messages, results, next_executors
         except Exception as e:
@@ -69,11 +68,11 @@ class Node(ParameterizedExecutable):
             return self.executable.release()
 
 
-class ThirdPartyNode(Node):
-    def __init__(self, graph, executable: Executable, params, results):
-        super().__init__(graph, executable, params, results)
+class ThirdPartyVertex(Vertex):
+    def __init__(self, network, executable: Executable, params, results):
+        super().__init__(network, executable, params, results)
 
 
-class FirstPartyNode(Node):
-    def __init__(self, graph, executable: Executable, params, results):
-        super().__init__(graph, executable, params, results)
+class FirstPartyVertex(Vertex):
+    def __init__(self, network, executable: Executable, params, results):
+        super().__init__(network, executable, params, results)

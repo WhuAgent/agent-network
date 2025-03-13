@@ -5,10 +5,11 @@ from datetime import datetime
 import yaml
 from agent_network.network.executable import Executable
 from abc import abstractmethod
-import agent_network.pipeline.context as ctx
+import agent_network.graph.context as ctx
 from agent_network.entity.usage import UsageToken, UsageTime
 from agent_network.entity.group_agent import GroupAgent
 from typing import List, Dict
+import os
 
 from agent_network.utils.llm.message import SystemMessage, UserMessage, AssistantMessage
 
@@ -16,14 +17,13 @@ from agent_network.utils.llm.message import SystemMessage, UserMessage, Assistan
 class BaseAgent(Executable):
 
     def __init__(self, graph, config, logger):
-        super().__init__(config["name"], config["task"], config["description"])
+        super().__init__(config["id"], config["description"])
         self.config = config
         self.graph = graph
-        self.task = self.config["task"]
-        self.title = self.config["name"]
+        self.title = self.config["title"] if "title" in self.config else self.id
         self.description = self.config["description"]
-        self.class_name = self.config["ref_id"]
-        self.role = self.config["role"]
+        self.class_name = self.config["ref_id"] if "ref_id" in self.config else self.id
+        self.role = self.config["role"] if "role" in self.config else self.id
         self.description = self.config["description"]
 
         self.params = self.config.get("params")
@@ -52,10 +52,10 @@ class BaseAgent(Executable):
         self.system_message = self.initial_system_message()
 
     def initial_system_message(self):
-        for message in self.config.get("prompts", []):
-            if message["type"] == "inline" and message["role"] == "system":
-                self.log("system", message["content"])
-                return SystemMessage(message["content"])
+        if "prompt" in self.config:
+            return SystemMessage(self.config["prompt"])
+        else:
+            return None
             
     def get_system_message(self):
         return self.system_message
@@ -94,7 +94,7 @@ class BaseAgent(Executable):
         begin_t = datetime.now().timestamp()
         messages, results = self.forward(messages, **kwargs)
         end_t = datetime.now().timestamp()
-        self.log("network", f"AGENT {self.name} time cost: {end_t - begin_t}", self.name)
+        self.log("network", f"AGENT {self.id} time cost: {end_t - begin_t}", self.id)
         time_cost = end_t - begin_t
         self.time_costs.append(UsageTime(begin_t, time_cost))
         return messages, results
@@ -119,7 +119,7 @@ class BaseAgent(Executable):
 
     def log(self, role, content, instance=None):
         if instance is None:
-            instance = self.name
+            instance = self.id
         if not isinstance(content, str):
             content = json.dumps(content, indent=4, ensure_ascii=False)
         self.logger.log(role, content, instance=instance)
@@ -138,37 +138,24 @@ class BaseAgent(Executable):
             usage_token_total_map["prompt_cost"] += usage.prompt_cost
             usage_token_total_map["completion_cost"] += usage.completion_cost
             usage_token_total_map["total_cost"] += usage.total_cost
-        self.log("Agent-Network-Agent", f"AGENT TOKEN TOTAL: {usage_token_total_map}", self.name)
+        self.log("Agent-Network-Agent", f"AGENT TOKEN TOTAL: {usage_token_total_map}", self.id)
         total_time = sum([usage_time.usage_time for usage_time in self.time_costs])
-        self.log("Agent-Network-Agent", f"AGENT TIME COST TOTAL: {total_time}", self.name)
-        self.log("Agent-Network-Agent", f"AGENT: {self.name} has been released")
+        self.log("Agent-Network-Agent", f"AGENT TIME COST TOTAL: {total_time}", self.id)
+        self.log("Agent-Network-Agent", f"AGENT: {self.id} has been released")
         return self.usages, self.time_costs
 
 
 class BaseAgentGroup(Executable):
     def __init__(self, graph, route, config, logger):
-        super().__init__(config["name"], config["task"], config["description"])
+        super().__init__(config["id"], config["description"])
         self.config = config
-        self.name = self.config["name"]
         self.logger = logger
         self.graph = graph
         self.route = route
-        self.class_name = self.config["ref_id"] if "ref_id" in self.config else None
-
-        self.max_step = self.config["max_step"]
+        self.class_name = self.config["ref_id"] if "ref_id" in self.config else self.id
 
         self.params = self.config.get("params")
         self.results = self.config.get("results")
-
-        self.routes = []
-        for route in self.config["routes"]:
-            self.routes.append({
-                "group": self.name,
-                "source": route["source"],
-                "target": route["target"],
-                "type": route["type"],
-                "rule": route["rule"] if "rule" in route else None
-            })
 
         self.agents: Dict[str, List[GroupAgent]] = {}
         self.start_agent = self.config.get("start_agent")
@@ -179,15 +166,14 @@ class BaseAgentGroup(Executable):
 
         self.tools = []
 
-    def load_agents(self) -> list[BaseAgent]:
+    def load_agents(self, agent_dir, file_suffix=".yaml") -> list[BaseAgent]:
         agents = []
-        for agent_item in self.config["agents"]:
-            agent_name, agent_config_path = list(agent_item.items())[0]
-            exist_agent_node = self.graph.get_node(agent_name)
-            if exist_agent_node is not None:
-                agent = exist_agent_node.executable
+        for agent_name in self.config["agents"]:
+            exist_agent_vertex = self.graph.get_vertex(agent_name)
+            if exist_agent_vertex is not None:
+                agent = exist_agent_vertex.executable
             else:
-                with open(agent_config_path, "r", encoding="utf-8") as f:
+                with open(os.path.join(agent_dir, agent_name + file_suffix), "r", encoding="utf-8") as f:
                     agent_config = yaml.safe_load(f)
                 agent = self.import_agent(agent_config)
             agents.append(agent)
@@ -196,34 +182,47 @@ class BaseAgentGroup(Executable):
             self.current_agents_name.append(agent_name)
         return agents
 
-    def import_agent(self, agent_config):
-        if agent_config["load_type"] == "module":
-            agent_module = importlib.import_module(agent_config["loadModule"])
-            agent_class = getattr(agent_module, agent_config["loadClass"])
-            agent_instance = agent_class(self.graph, agent_config, self.logger)
+    def load_agent(self, agent_dir, agent_file, agent_name) -> BaseAgent:
+        exist_agent_vertex = self.graph.get_vertex(agent_name)
+        if exist_agent_vertex is not None:
+            agent = exist_agent_vertex.executable
         else:
-            raise Exception("Agent load type must be module!")
-        return agent_instance
+            with open(os.path.join(agent_dir, agent_file), "r", encoding="utf-8") as f:
+                agent_config = json.load(f)
+                agent_module = importlib.import_module("agent")
+                agent_class = getattr(agent_module, agent_name)
+                agent = agent_class(self.graph, agent_config, self.logger)
+                self.agents.setdefault(agent_name, [])
+                self.agents[agent_name].append(GroupAgent(datetime.now().timestamp(), agent_name))
+                self.current_agents_name.append(agent_name)
+        return agent
+
+    def import_agent(self, agent_config):
+        agent_module = importlib.import_module("agent")
+        agent_class = getattr(agent_module, agent_config["id"])
+        agent = agent_class(self.graph, agent_config, self.logger)
+        return agent
 
     def execute(self, message, **kwargs):
-        # todo start_agent move into route
+        if self.start_agent is None:
+            raise Exception(f"group: {self.id} don't have start agent.")
         results = {
             "message": message,
-            "next_agent": self.config["start_agent"]
+            "next_agent": self.start_agent
         }
         return message, results
 
     def add_agent(self, name):
-        assert name not in list(self.current_agents_name), f"agent {name} already exist in group {self.name}"
+        assert name not in list(self.current_agents_name), f"agent {name} already exist in group {self.id}"
         self.agents.setdefault(name, [])
         self.agents[name].append(GroupAgent(datetime.now().timestamp(), name))
 
     def remove_agent(self, name):
-        assert name in list(self.current_agents_name), f"agent {name} not exist in group {self.name}"
+        assert name in list(self.current_agents_name), f"agent {name} not exist in group {self.id}"
         group_agent_list = self.agents[name]
         self.current_agents_name.remove(name)
         group_agent_list[len(group_agent_list) - 1].end_timestamp = datetime.now().timestamp()
-        self.logger.log("Agent-Network-Group", f"agent: {name} has been removed from group: {self.name}", self.name)
+        self.logger.log("Agent-Network-Group", f"agent: {name} has been removed from group: {self.id}", self.id)
 
     def remove_agent_if_exist(self, name):
         if name in list(self.current_agents_name):
@@ -231,7 +230,7 @@ class BaseAgentGroup(Executable):
 
     def release(self):
         # for agent in self.agents:
-        #     agent_token_usages, agent_time_costs = self.graph.get_node(agent).release()
+        #     agent_token_usages, agent_time_costs = self.graph.get_vertex(agent).release()
         #     for group_agent in self.agents[agent]:
         #         if group_agent.end_timestamp == group_agent.begin_timestamp:
         #             group_agent.end_timestamp = datetime.now()
@@ -242,5 +241,5 @@ class BaseAgentGroup(Executable):
         #         self.total_time += group_agent_total_time
         # self.logger.log("Agent-Network", f"TOKEN TOTAL: completion_tokens: {self.usage_token_total_map['completion_tokens']}, 'prompt_tokens': {self.usage_token_total_map['prompt_tokens']}, 'total_tokens': {self.usage_token_total_map['total_tokens']}", self.name)
         # self.logger.log("Agent-Network", f"TIME COST TOTAL: {self.total_time}", self.name)
-        self.logger.log("Agent-Network-Group", f"GROUP: {self.name} has been released")
+        self.logger.log("Agent-Network-Group", f"GROUP: {self.id} has been released")
         return self.usage_token_total_map, self.total_time

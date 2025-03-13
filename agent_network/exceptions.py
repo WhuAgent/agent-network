@@ -10,7 +10,7 @@ class ReportError(Exception):
     """
     ReportError
     """
-    def __init__(self, error_message, next_node):
+    def __init__(self, error_message, next_vertex):
         self.error_message = error_message
-        self.next_node = next_node 
+        self.next_vertex = next_vertex
         self.message = error_message

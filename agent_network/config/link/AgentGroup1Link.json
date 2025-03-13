@@ -1,0 +1,15 @@
+{
+  "group": "AgentGroup1",
+  "links": [
+    {
+      "source": "start",
+      "target": "Agent1",
+      "type": "soft"
+    },
+    {
+      "source": "Agent1",
+      "target": "Agent2",
+      "type": "soft"
+    }
+  ]
+}

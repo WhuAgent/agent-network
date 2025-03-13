@@ -18,7 +18,7 @@ pip install git+https://github.com/WhuAgent/agent-network.git@66900a7ee6f887d076
 
 ### 20241220
 
-实现了对话历史与 graph 分离，储存在 pipeline 里，并且能够统计对话消耗 token。
+实现了对话历史与 network 分离，储存在 graph 里，并且能够统计对话消耗 token。
 
 对消息格式进行了规范化，定义了 `SystemMessage`、`UserMessage`、`AssistantMessage` 和 `OpanAIMessage`。其中 `OpanAIMessage` 专指大模型返回的消息，而 `AssistantMessage` 可以指任何其他消息（主要用于日志记录）。
 

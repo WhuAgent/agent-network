@@ -1,5 +1,4 @@
 from agent_network.network.network import Network
-from agent_network.network.graph import Graph
 import os
 from os import _exit
 import yaml
@@ -9,9 +8,7 @@ import traceback
 import asyncio
 
 logger = Logger("log")
-network = Network('agent-network', None, None, None)
-graph = Graph('graph', None, None, None, None, None, logger)
-network.add_graph(graph.name, graph)
+network = Network('agent-network', None, None, None, logger)
 
 
 def load():
@@ -30,7 +27,7 @@ def load():
                 continue
             else:
                 service_client = NacosClient(
-                    graph=graph,
+                    network=network,
                     service_group=service_config["service_group"],
                     service_name=service_config["service_name"],
                     access_key=service_config["access_key"],
@@ -41,14 +38,14 @@ def load():
                 )
                 loop = asyncio.get_event_loop()
                 loop.run_until_complete(service_client.connect())
-                # service_client.update_all_services_nodes()
+                # service_client.update_all_services_vertexes()
                 service_clients.append(service_client)
-        graph.register_clients(service_clients)
-        graph.load("config/graph.yaml")
+        network.register_clients(service_clients)
+        network.load("config/network.yaml")
     except Exception as e:
         print(f"Agent-network load error, please check config file: {e}")
         traceback.print_exc()
-        graph.release()
+        network.release()
         _exit(0)
 
 

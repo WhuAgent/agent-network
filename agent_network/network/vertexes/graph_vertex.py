@@ -1,19 +1,19 @@
 from agent_network.network.executable import Executable
-from agent_network.network.nodes.node import FirstPartyNode
+from agent_network.network.vertexes.vertex import FirstPartyVertex
 
 
-class GroupNode(FirstPartyNode):
-    def __init__(self, graph, executable: Executable, params, results):
-        super().__init__(graph, executable, params, results)
-        self.group = executable.name
+class GroupVertex(FirstPartyVertex):
+    def __init__(self, network, executable: Executable, params, results):
+        super().__init__(network, executable, params, results)
+        self.group = executable.id
 
     # def release(self):
     #     return self.executable.release()
 
 
-class AgentNode(FirstPartyNode):
-    def __init__(self, graph, executable: Executable, params, results, group):
-        super().__init__(graph, executable, params, results)
+class AgentVertex(FirstPartyVertex):
+    def __init__(self, network, executable: Executable, params, results, group):
+        super().__init__(network, executable, params, results)
         self.group = group
 
     # def release(self):
