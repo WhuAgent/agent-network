@@ -140,6 +140,15 @@ model_cost = {
     "gemini-2.0-flash-exp": {
         "prompt_token": 0.01,
         "completion_token": 0.04
+    },
+    "qwen2.5-32b-instruct": {
+        "prompt_token": 0.002,
+        "completion_token": 0.006
+    },
+    "qwq-plus": {
+        "prompt_token": 0.0016,
+        "completion_token": 0.004,
+        "stream": True
     }
 }
 
@@ -177,13 +186,13 @@ class AssistantMessage(Message):
 
 
 class OpenAIMessage(Message):
-    def __init__(self, content, model, openai_usage: CompletionUsage):
+    def __init__(self, content, model, prompt_tokens, completion_tokens):
         super().__init__("assistant", content)
 
         self.model = model
-        self.prompt_token_num = openai_usage.prompt_tokens
+        self.prompt_token_num = prompt_tokens
         self.prompt_token_cost = model_cost[self.model]["prompt_token"] * self.prompt_token_num / 1000
-        self.completion_token_num = openai_usage.completion_tokens
+        self.completion_token_num = completion_tokens
         self.completion_token_cost = model_cost[self.model]["completion_token"] * self.completion_token_num / 1000
         self.token_num = self.prompt_token_num + self.completion_token_num
         self.token_cost = self.prompt_token_cost + self.completion_token_cost
