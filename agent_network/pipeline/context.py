@@ -1,12 +1,10 @@
 import threading
-
 from agent_network.utils.llm.message import Message
 
 thread_local_data = threading.local()
 global_map = {}
 pipeline_key = "$$$$$Pipeline$$$$$"
 pipeline_id_key = "$$$$$PipelineID$$$$$"
-
 
 def register_global(key, value):
     global_map[key] = value
