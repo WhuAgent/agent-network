@@ -12,7 +12,7 @@
     { "title":"serviceId", "name":"serviceId", "type":"String", "notnull":true, "description": "服务号ID", "defaultValue":"" }
   ],
   "results":[
-    { "title":"timestamp", "name":"timestamp", "type":"Long", "notnull":true, "description":"过期时间", "defaultValue":"" },
-    { "title":"signature", "name":"signature", "type":"String", "notnull":true, "description":"签名", "defaultValue":"" }
+    { "title":"result", "name":"result", "type":"String", "notnull":true, "description":"结果", "defaultValue":"" },
+    { "title":"bool_result", "name":"bool_result", "type":"Boolean", "notnull":true, "description":"布尔结果", "defaultValue":"" }
   ]
 }
