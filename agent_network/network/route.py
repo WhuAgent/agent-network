@@ -3,6 +3,9 @@ class Route:
     def __init__(self):
         self.node_description = {}
         self.contact_list = dict()
+        
+        self.message_group_size = {}
+        self.message_group = {}
 
     def node_exist(self, name):
         return name in self.node_description
@@ -23,11 +26,19 @@ class Route:
                     del self.contact_list[source][name]
         del self.node_description[name]
 
-    def register_contact(self, source, target, message_type):
+    def register_contact(self, source, target, message_type, message_group_name=None):
         assert source in self.node_description, f"{source} does not exist!"
         assert target in self.node_description, f"{target} does not exist!"
+        
+        if message_group_name:
+            if message_group_name not in self.message_group_size.keys():
+                self.message_group_size[message_group_name] = 0
+                self.message_group[message_group_name] = []
+            
+            self.message_group_size[message_group_name] += 1
+            
 
-        self.contact_list[source][target] = {"name": target, "message_type": message_type}
+        self.contact_list[source][target] = {"name": target, "message_type": message_type, "message_group": message_group_name}
 
     def deregister_contact(self, source, target):
         assert source in self.node_description, f"{source} does not exist!"
@@ -36,21 +47,30 @@ class Route:
         del self.contact_list[source][target]
 
     def check_contact(self, source, target):
-        for item in self.contact_list[source]:
-            if target == item:
-                return True
-        return False
+        if target in self.contact_list[source].keys():
+            return True, self.contact_list[source][target]["message_group"]
+        else:
+            return False, None
 
     def forward_message(self, source, target, message):
         if len(self.contact_list[source]) == 0 or target == "COMPLETE":
             return "COMPLETE", "COMPLETE"
+        
+        could_send, message_group_name = self.check_contact(source, target)
 
-        assert self.check_contact(source, target), f"{target} is not in {source}'s contact_list!"
-
+        assert could_send, f"{target} is not in {source}'s contact_list!"
+        
         if isinstance(message, dict) and "message" in message:
             message = message["message"]
-
-        return target, message
+        
+        if message_group_name:
+            self.message_group[message_group_name].append(message)
+            if len(self.message_group[message_group_name]) == self.message_group_size[message_group_name]:
+                return target, self.message_group[message_group_name]
+            else:
+                return None, None
+        else:
+            return target, message if isinstance(message, list) else [message]
 
     def get_contactions(self, source):
         contactions = {}

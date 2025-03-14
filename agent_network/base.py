@@ -5,7 +5,7 @@ from datetime import datetime
 import yaml
 from agent_network.network.executable import Executable
 from abc import abstractmethod
-import agent_network.pipeline.context as ctx
+import agent_network.pipeline.new_context.local as ctx
 from agent_network.entity.usage import UsageToken, UsageTime
 from agent_network.entity.group_agent import GroupAgent
 from typing import List, Dict
@@ -28,7 +28,7 @@ class BaseAgent(Executable):
         self.params = self.config.get("params")
         self.results = self.config.get("results")
 
-        self.model = self.config["model"]
+        self.model = self.config.get("model")
         self.prompts = self.config.get("prompts")
         self.tools = self.config.get("tools")
         self.logger = logger
@@ -51,7 +51,8 @@ class BaseAgent(Executable):
         self.system_message = self.initial_system_message()
 
     def initial_system_message(self):
-        for message in self.config.get("prompts", []):
+        self.config["prompts"] = self.config.get("prompts") or []
+        for message in self.config.get("prompts"):
             if message["type"] == "inline" and message["role"] == "system":
                 self.log("system", message["content"])
                 return SystemMessage(message["content"])
@@ -97,18 +98,23 @@ class BaseAgent(Executable):
 
     def execute(self, messages, **kwargs):
         # begin_t = datetime.now().timestamp()
-        messages, results = self.forward(messages, **kwargs)
+        returns = self.forward(messages, **kwargs)
+        if len(returns) == 2:
+            messages, results = returns
+            next_executors = None
+        elif len(returns) == 3:
+            messages, results, next_executors = returns
         # end_t = datetime.now().timestamp()
         # self.log("network", f"AGENT {self.name} time cost: {end_t - begin_t}", self.name)
         # time_cost = end_t - begin_t
         # self.time_costs.append(UsageTime(begin_t, time_cost))
         # ctx.register_time(self.name, time_cost)
-        return messages, results
+        return messages, results, next_executors
 
-    def chat_llm(self, messages):
+    def chat_llm(self, messages, **kwargs):
         # todo 该时间不精准，应该取execute的开始时间
         time_chat_begin = datetime.now().timestamp()
-        assistant_message = chat_llm(messages, self.model)
+        assistant_message = chat_llm(messages, **kwargs)
         messages.append(assistant_message)
         self.log(assistant_message.role, assistant_message.content)
         # usage_token_map = {'completion_tokens': usage.completion_tokens, 'prompt_tokens': usage.prompt_tokens,
@@ -164,12 +170,9 @@ class BaseAgentGroup(Executable):
         self.results = self.config.get("results")
 
         self.routes = []
-        for route in self.config["routes"]:
-            self.routes.append({
-                "source": route["source"],
-                "target": route["target"],
-                "type": route["type"]
-            })
+        self.config["routes"] = self.config.get("routes") or []  
+        for route in self.config.get("routes"):
+            self.routes.append({**route})
 
         self.agents: Dict[str, List[GroupAgent]] = {}
         self.start_agent = self.config.get("start_agent")
@@ -206,9 +209,9 @@ class BaseAgentGroup(Executable):
         # todo start_agent move into route
         results = {
             "message": message,
-            "next_agent": self.config["start_agent"]
         }
-        return message, results
+        next_executors = self.config["start_agent"]
+        return message, results, next_executors
 
     def add_agent(self, name):
         assert name not in list(self.current_agents_name), f"agent {name} already exist in group {self.name}"

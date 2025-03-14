@@ -1,5 +1,5 @@
 from agent_network.network.executable import Executable
-import agent_network.pipeline.context as ctx
+import agent_network.pipeline.new_context.local as ctx
 import threading
 from agent_network.network.route import Route
 from typing import Dict, List
@@ -33,10 +33,7 @@ class Graph(Executable):
         self.agents_usages_token_history: Dict[str, List[UsageToken]] = {}
 
     def execute(self, node, messages, **kwargs):
-        current_ctx = ctx.retrieve_global_all()
-        ctx.shared_context(current_ctx)
         messages, result, next_executables = self.nodes.get(node).execute(messages, **kwargs)
-        ctx.registers_global(ctx.retrieves([result["name"] for result in self.results] if self.results else []))
         return messages, result, next_executables
 
     def add_node(self, name, node: Executable):
@@ -152,11 +149,12 @@ class Graph(Executable):
     def node_exists(self, name):
         return name in self.nodes
 
-    def add_route(self, source, target, message_type):
+    def add_route(self, source, target, message_type, **kwargs):
         self.routes.append({
             "source": source,
             "target": target,
-            "message_type": message_type
+            "message_type": message_type,
+            **kwargs
         })
 
     def release(self):
