@@ -16,6 +16,24 @@ pip install git+https://github.com/WhuAgent/agent-network.git@66900a7ee6f887d076
 
 ## 更新说明
 
+### 20250315
+
+优化了智能体之间传递消息的方式。明确了 BaseAgent.forward() 方法的参数和返回值意义。
+
+```python
+def forward(self, messages, **kwargs):
+    # do something
+    
+    if # somtehing:
+        return result, next_execution
+    else:
+        return result
+```
+
+forward 方法不再额外返回 messages 返回值，只返回执行结果 result 和下一个调用的智能体 next_execution。如果不返回 next_execution，则会自动调用路由里面的 search 方法，去寻找下一个执行的智能体（TODO：优化 search 方法）。
+
+如果要实现两个 Agent 之间相互对话，需要在 Agent 的 params 和 results 里面进行相应的配置。
+
 ### 20241220
 
 实现了对话历史与 network 分离，储存在 graph 里，并且能够统计对话消耗 token。
