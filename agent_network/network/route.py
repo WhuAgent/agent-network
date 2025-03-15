@@ -52,40 +52,42 @@ class Route(Communicate):
                 return True
         return False
 
-    def forward_message(self, source, target, message):
+    def forward_message(self, source, target):
         if len(self.contact_list[source]) == 0 or target == "COMPLETE":
-            return "COMPLETE", "COMPLETE"
-
+            return "COMPLETE"
+        
         assert self.check_contact(source, target), f"{target} is not in {source}'s contact_list!"
 
-        if isinstance(message, dict) and "message" in message:
-            message = message["message"]
+        return target
 
-        return target, message
-
-    def forward(self, source, message):
-        if isinstance(message, dict) and "message" in message:
-            message = message["message"]
-
+    def forward(self, source):
         if len(self.contact_list[source]) == 0:
-            return [], message
+            return []
 
         targets = []
         if source in self.hard_contact_list:
             targets.extend(list(self.hard_contact_list[source].keys()))
 
-        return targets, message
+        return targets
+    
+    def all_results_generated(self, current_context, final_results):
+        for item in final_results:
+            if current_context.get(item) is None:
+                return False
+        return True
 
-    def search(self, source, message):
-        targets, message = self.forward(source, message)
+    def search(self, source, current_context, final_results):
+        if self.all_results_generated(current_context, final_results):
+            return ["COMPLETE"]
+        targets = self.forward(source)
         if len(targets) > 0:
-            return targets, message
+            return targets
+        
         if source in self.contact_list:
             targets_map = self.contact_list[source]
             targets = targets_map.keys()
             # todo 用算法从软路由里找一些需要交流的
-            return [], message
-
+            return []
     def execute(self, group, source, target):
         pass
 

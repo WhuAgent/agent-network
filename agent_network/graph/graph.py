@@ -70,7 +70,7 @@ class Graph:
     #         raise Exception("Group load type must be module!")
     #     return group_instance
 
-    def execute(self, network: Network, start_vertex, context=None):
+    def execute(self, network: Network, start_vertex, params=None, results=["result"]):
         try:
             vertexes = network.get_vertexes()
             # TODO 分布式下如何处理vertex_messages
@@ -83,7 +83,7 @@ class Graph:
                                        network.route,
                                        [TaskVertex(id="start")],
                                        [TaskVertex(network.get_vertex(start_vertex))],
-                                       context)
+                                       params, results)
         except Exception as e:
             traceback.print_exc()
             self.release()
@@ -94,7 +94,8 @@ class Graph:
                        route: Route,
                        father_task_vertexes: list[TaskVertex],
                        task_vertexes: list[TaskVertex],
-                       context=None):
+                       params=None,
+                       results=["result"]):
         if task_vertexes is None or len(task_vertexes) == 0:
             return
         self.trace.add_vertexes([n.id for n in task_vertexes])
@@ -104,8 +105,8 @@ class Graph:
         if self.step > max_step:
             self.release()
             raise Exception("Max step reached, Task Failed!")
-        if context:
-            ctx.registers(context)
+        if params:
+            ctx.registers(params)
         # TODO 由感知层根据任务激活决定触发哪些 Agent，现在默认线性执行所有 TaskNode
         next_task_vertexes: list[TaskVertex] = []
         for task_vertex in task_vertexes:
@@ -118,7 +119,7 @@ class Graph:
                 self.execution_history.append(History(pre_executors=father_task_vertexes, cur_executor=task_vertex))
                 self.cur_execution = self.execution_history[-1]
 
-                messages, result, next_executables = network.execute(task_vertex.id, messages)
+                cur_execution_result, next_executables = network.execute(task_vertex.id, messages)
 
                 self.cur_execution.llm_messages = messages[len_message:]
                 self.cur_execution.next_executors = next_executables
@@ -126,24 +127,25 @@ class Graph:
                 # self.load_route(graph, route)
                 if next_executables is None:
                     # 根据result和当前节点执行动态路由搜索逻辑
-                    targets, message = route.search(task_vertex.id, result)
+                    targets = route.search(task_vertex.id, ctx.retrieves_all(), results)
                     for target in targets:
-                        next_task_vertex = TaskVertex(network.get_vertex(target), message)
-                        current_next_task_vertexes.append(next_task_vertex)
+                        if target != "COMPLETE":
+                            next_task_vertex = TaskVertex(network.get_vertex(target))
+                            current_next_task_vertexes.append(next_task_vertex)
                 else:
                     for next_executable in next_executables:
-                        next_executable, message = route.forward_message(task_vertex.id, next_executable, result)
+                        target = route.forward_message(task_vertex.id, next_executable)
                         # if not leaf vertex
-                        if message != "COMPLETE":
-                            next_task_vertex = TaskVertex(network.get_vertex(next_executable), message)
+                        if target != "COMPLETE":
+                            next_task_vertex = TaskVertex(network.get_vertex(next_executable))
                             current_next_task_vertexes.append(next_task_vertex)
-                self.trace.add_spans(task_vertex.id, [nv.id for nv in current_next_task_vertexes], messages, result)
+                self.trace.add_spans(task_vertex.id, [nv.id for nv in current_next_task_vertexes], messages, cur_execution_result)
                 next_task_vertexes.extend(current_next_task_vertexes)
             except Exception as e:
                 self.release()
                 raise Exception(e)
-
-        self._execute_graph(network, route, task_vertexes, next_task_vertexes)
+        if len(next_task_vertexes) > 0:
+            self._execute_graph(network, route, task_vertexes, next_task_vertexes)
         return ctx.retrieves_all()
 
     def register_time_cost(self, time_cost):
@@ -152,8 +154,8 @@ class Graph:
     def retrieve_result(self, key):
         return ctx.retrieve_global(key)
 
-    def retrieve_results(self):
-        return {key: value for key, value in ctx.retrieve_global_all().items()}
+    def retrieve_results(self, results):
+        return {key: ctx.retrieve_global(key) for key in results}
 
     def release(self):
         total_token_num = 0

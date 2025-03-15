@@ -29,7 +29,7 @@ class BaseAgent(Executable):
         self.params = self.config.get("params")
         self.results = self.config.get("results")
 
-        self.model = self.config["model"]
+        self.model = self.config.get("model")
         self.prompts = self.config.get("prompts")
         self.tools = self.config.get("tools")
         self.logger = logger
@@ -92,30 +92,54 @@ class BaseAgent(Executable):
 
     def execute(self, messages, **kwargs):
         begin_t = datetime.now().timestamp()
-        messages, results = self.forward(messages, **kwargs)
+        # messages, results = self.forward(messages, **kwargs)
+        returns = self.forward(messages, **kwargs)
+        if len(returns) == 1:
+            results = returns
+            next_executors = None
+        elif len(returns) == 2:
+            results, next_executors = returns
         end_t = datetime.now().timestamp()
         self.log("network", f"AGENT {self.id} time cost: {end_t - begin_t}", self.id)
         time_cost = end_t - begin_t
         self.time_costs.append(UsageTime(begin_t, time_cost))
-        return messages, results
-
-    def chat_llm(self, messages):
+        return results, next_executors
+    
+    def chat_llm(self, messages, **kwargs):
         # todo 该时间不精准，应该取execute的开始时间
         time_chat_begin = datetime.now().timestamp()
-        assistant_message = chat_llm(messages, self.model)
+        assistant_message = chat_llm(messages, **kwargs)
         messages.append(assistant_message)
         self.log(assistant_message.role, assistant_message.content)
-        usage_token_map = {'completion_tokens': assistant_message.completion_token_num, 'prompt_tokens': assistant_message.prompt_token_num,
-                           'total_tokens': assistant_message.token_num, 'total_cost': assistant_message.token_cost,
-                           'completion_cost': assistant_message.completion_token_cost, 'prompt_cost': assistant_message.prompt_token_cost}
-        self.usages.append(UsageToken(time_chat_begin, usage_token_map))
+        # usage_token_map = {'completion_tokens': usage.completion_tokens, 'prompt_tokens': usage.prompt_tokens,
+        #                    'total_tokens': usage.total_tokens, 'total_cost': usage.total_cost,
+        #                    'completion_cost': usage.completion_cost, 'prompt_cost': usage.prompt_cost}
+        # self.usages.append(UsageToken(time_chat_begin, usage_token_map))
         
         ctx.register_llm_action(messages)
         self.log("network", f"STEP TOKEN NUM: {assistant_message.token_num} COST: {assistant_message.token_cost}")
-        if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
-            self.history_action.pop(0)
-        self.history_action.append({"role": assistant_message.role, "content": assistant_message.content})
+        # if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
+        #     self.history_action.pop(0)
+        # self.history_action.append({"role": response.role, "content": str(response.content)})
         return assistant_message
+
+    # def chat_llm(self, messages):
+    #     # todo 该时间不精准，应该取execute的开始时间
+    #     time_chat_begin = datetime.now().timestamp()
+    #     assistant_message = chat_llm(messages, self.model)
+    #     messages.append(assistant_message)
+    #     self.log(assistant_message.role, assistant_message.content)
+    #     usage_token_map = {'completion_tokens': assistant_message.completion_token_num, 'prompt_tokens': assistant_message.prompt_token_num,
+    #                        'total_tokens': assistant_message.token_num, 'total_cost': assistant_message.token_cost,
+    #                        'completion_cost': assistant_message.completion_token_cost, 'prompt_cost': assistant_message.prompt_token_cost}
+    #     self.usages.append(UsageToken(time_chat_begin, usage_token_map))
+        
+    #     ctx.register_llm_action(messages)
+    #     self.log("network", f"STEP TOKEN NUM: {assistant_message.token_num} COST: {assistant_message.token_cost}")
+    #     if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
+    #         self.history_action.pop(0)
+    #     self.history_action.append({"role": assistant_message.role, "content": assistant_message.content})
+    #     return assistant_message
 
     def log(self, role, content, instance=None):
         if instance is None:
@@ -188,7 +212,7 @@ class BaseAgentGroup(Executable):
             agent = exist_agent_vertex.executable
         else:
             with open(os.path.join(agent_dir, agent_file), "r", encoding="utf-8") as f:
-                agent_config = json.load(f)
+                agent_config = json.load(f) if agent_file.endswith(".json") else yaml.safe_load(f)
                 agent_module = importlib.import_module("agent")
                 agent_class = getattr(agent_module, agent_name)
                 agent = agent_class(self.graph, agent_config, self.logger)

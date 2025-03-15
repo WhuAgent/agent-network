@@ -1,0 +1,31 @@
+{
+  "id":"TBotGroup",
+  "type":"python",
+  "title":"TBot 任务助手",
+  "description":"使用 TBot 帮忙完成一些任务",
+  "prompt": "",
+  "keywords": ["TBot", "任务"],
+  "reference":"http://xxx/Scheduling/机器ID",
+  "manual":"http://wechat.com/xxxx.html",
+  "agents": ["worker", "ocr_tool"],
+  "params":[
+    { 
+      "title":"task", 
+      "name":"task", 
+      "type":"String", 
+      "notnull":true, 
+      "description": "用户任务", 
+      "defaultValue":"" 
+    }
+  ],
+  "results":[
+    { 
+      "title":"result", 
+      "name":"result", 
+      "type":"String", 
+      "notnull":true, 
+      "description":"任务结果", 
+      "defaultValue":"" 
+    }
+  ]
+}
