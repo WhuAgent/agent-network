@@ -1,6 +1,10 @@
 from openai.types.completion_usage import CompletionUsage
 
 model_cost = {
+    "deepseek-chat": {
+        "prompt_token": 0.002,
+        "completion_token": 0.008
+    },
     "gpt-3.5-turbo": {
         "prompt_token": 0.0035,
         "completion_token": 0.0105
@@ -161,13 +165,13 @@ class Message:
         self.token_cost = 0
 
     def to_openai_message(self):
-        return {"role": self.role, "content": self.content}
+        return {"role": self.role, "content": str(self.content)}
 
     def __str__(self):
         return self.content
 
     def __repr__(self):
-        return f"'{self.role}, {self.token_num}, {self.token_cost}'"
+        return f"{self.role}: {self.content}"
 
 
 class SystemMessage(Message):
