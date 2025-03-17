@@ -1,13 +1,9 @@
-# from v2.nacos import NacosNamingService, NacosConfigService, ConfigParam, RegisterInstanceParam, \
-#     DeregisterInstanceParam, Instance, SubscribeServiceParam, ListServiceParam, GetServiceParam
-# from v2.nacos.common.client_config import ClientConfig
-import nacos
 from agent_network.distributed.client import Client
 from agent_network.distributed.service.service_config import VertexConfig
 import json
-import requests
+import urequests as requests
+import uasyncio as asyncio
 import time
-import threading
 
 
 class NacosClient(Client):
@@ -33,12 +29,15 @@ class NacosClient(Client):
         #     access_key=self.access_key,
         #     secret_key=self.secret_key,
         # ))
-        self.nacos_client = nacos.NacosClient(self.center_addr)
+        # self.nacos_client = nacos.NacosClient(self.center_addr)
+        pass
 
     async def register(self, vertexes):
         metadata = self.get_metadata(vertexes)
-        self.nacos_client.publish_config(self.service_name, self
-                                         .service_group, metadata)
+        url = f"{self.center_addr}/nacos/v1/cs/configs?group={self.service_group}&dataId={self.service_name}&content={metadata}"
+        requests.post(url)
+        # self.nacos_client.publish_config(self.service_name, self
+        #                                  .service_group, metadata)
         # await self.config_client.publish_config(ConfigParam(
         #     data_id=self.service_name,
         #     group=self.service_group,
@@ -77,8 +76,12 @@ class NacosClient(Client):
                     print(f"nacos heart beat failed with addr: {self.center_addr}")
                 time.sleep(5)
 
-        send_beat_thread = threading.Thread(target=heart_beat)
-        send_beat_thread.start()
+        asyncio.run(heart_beat)
+
+    def search_services(self, service_group):
+        url = f"{self.center_addr}/nacos/v2/ns/service/list?groupName={service_group}"
+        res = requests.get(url)
+        return res.json()['data']
 
     def search_service(self, service_name, service_group):
         url = f"{self.center_addr}/nacos/v2/ns/service?serviceName={service_name}&&groupName={service_group}"
@@ -86,15 +89,13 @@ class NacosClient(Client):
         # if
         return res.status_code == 200
 
-    def search_services(self, service_group):
-        url = f"{self.center_addr}/nacos/v2/ns/service/list?groupName={service_group}"
-        res = requests.get(url)
-        # if
-        return res.json()['data']
-
     def deregister(self):
-        self.nacos_client.remove_config(self.service_name, self.service_group)
-        self.nacos_client.remove_naming_instance(self.service_name, self.ip, self.port, group_name=self.service_group)
+        # self.nacos_client.remove_config(self.service_name, self.service_group)
+        url = f"{self.center_addr}/nacos/v1/cs/configs?group={self.service_group}&dataId={self.service_name}"
+        requests.delete(url)
+        url = f"{self.center_addr}/nacos/v1/ns/instance?ip={self.ip}&port={self.port}&serviceName={self.service_name}&groupName={self.service_group}"
+        requests.delete(url)
+        # self.nacos_client.remove_naming_instance(self.service_name, self.ip, self.port, group_name=self.service_group)
         # for service in self.subscribed_service:
         #     self.nacos_client.remove_config_watcher(service, self.service_group, self.config_listener)
         # await self.config_client.remove_config(ConfigParam(
@@ -116,9 +117,13 @@ class NacosClient(Client):
 
     def update(self, vertexes):
         metadata = self.get_metadata(vertexes)
-        self.nacos_client.publish_config(self.service_name, self
-                                         .service_group, metadata)
-        self.nacos_client.modify_naming_instance(self.service_name, self.ip, self.port, group_name=self.service_group)
+        url = f"{self.center_addr}/nacos/v1/cs/configs?group={self.service_group}&dataId={self.service_name}&content={metadata}"
+        requests.post(url)
+        # self.nacos_client.publish_config(self.service_name, self
+        #                                  .service_group, metadata)
+        url = f"{self.center_addr}/nacos/v1/ns/instance?ip={self.ip}&port={self.port}&serviceName={self.service_name}&groupName={self.service_group}"
+        requests.put(url)
+        # self.nacos_client.modify_naming_instance(self.service_name, self.ip, self.port, group_name=self.service_group)
         # await self.config_client.publish_config(ConfigParam(
         #     data_id=self.service_name,
         #     group=self.service_group,
@@ -147,7 +152,8 @@ class NacosClient(Client):
         if service_name not in self.subscribed_service:
             # asyncio.get_event_loop().run_until_complete(
             #     self.config_client.add_listener(service, self.service_group, self.config_listener))
-            self.nacos_client.add_config_watcher(service_name, service_group, self.config_listener)
+            # TODO 监听配置更新
+            # self.nacos_client.add_config_watcher(service_name, service_group, self.config_listener)
             self.subscribed_service.append(service_name)
         vertex_configs = self.get_vertex_configs(service_name)
         return vertex_configs
@@ -181,7 +187,9 @@ class NacosClient(Client):
         #     data_id=service,
         #     group=self.service_group
         # ))), service)
-        return self.loads_config(self.nacos_client.get_config(service, self.service_group), service)
+        url = f"{self.center_addr}/nacos/v1/cs/configs?group={self.service_group}&dataId={service}"
+        # return self.loads_config(self.nacos_client.get_config(service, self.service_group), service)
+        return self.loads_config(requests.get(url), service)
 
     def loads_config(self, content, service):
         if content is None:

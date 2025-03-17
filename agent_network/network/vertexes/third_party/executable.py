@@ -1,5 +1,5 @@
 from agent_network.network.executable import Executable
-import requests
+import urequests as requests
 
 
 class ThirdPartyExecutable(Executable):

@@ -1,4 +1,4 @@
-from datetime import datetime
+import time
 
 
 class GroupAgent:
@@ -8,4 +8,4 @@ class GroupAgent:
         self.name = name
 
     def separate(self):
-        self.end_timestamp = datetime.now().timestamp()
+        self.end_timestamp = time.time()

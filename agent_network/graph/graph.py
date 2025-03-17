@@ -1,12 +1,10 @@
-import uuid
-import traceback
-
 from agent_network.graph.history import History
 from agent_network.network.network import Network
 from agent_network.network.route import Route
 from agent_network.graph.task_vertex import TaskVertex
 import agent_network.graph.context as ctx
 from agent_network.graph.trace import Trace
+import random
 
 
 class Graph:
@@ -15,7 +13,7 @@ class Graph:
         self.vertexes = []
         self.step = 0
         if id is None:
-            self.id = str(uuid.uuid4())
+            self.id = str(random.random())
         else:
             self.id = id
 
@@ -85,7 +83,6 @@ class Graph:
                                        [TaskVertex(network.get_vertex(start_vertex))],
                                        context)
         except Exception as e:
-            traceback.print_exc()
             self.release()
             raise Exception(e)
 

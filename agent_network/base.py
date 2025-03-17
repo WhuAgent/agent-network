@@ -1,15 +1,11 @@
-import importlib
 import json
 from agent_network.utils.llm.openai import chat_llm
-from datetime import datetime
-import yaml
+import time
 from agent_network.network.executable import Executable
-from abc import abstractmethod
 import agent_network.graph.context as ctx
 from agent_network.entity.usage import UsageToken, UsageTime
 from agent_network.entity.group_agent import GroupAgent
-from typing import List, Dict
-import os
+import agent_network.utils.micropython as mp
 
 from agent_network.utils.llm.message import SystemMessage, UserMessage, AssistantMessage
 
@@ -46,8 +42,8 @@ class BaseAgent(Executable):
             raise Exception("append history number can not be more than keep history number")
         self.runtime_revision_number = 0
         self.cost_history = []
-        self.usages: List[UsageToken] = []
-        self.time_costs: List[UsageTime] = []
+        self.usages: list[UsageToken] = []
+        self.time_costs: list[UsageTime] = []
 
         self.system_message = self.initial_system_message()
 
@@ -56,7 +52,7 @@ class BaseAgent(Executable):
             return SystemMessage(self.config["prompt"])
         else:
             return None
-            
+
     def get_system_message(self):
         return self.system_message
 
@@ -69,7 +65,7 @@ class BaseAgent(Executable):
             messages.append(AssistantMessage(content))
         else:
             raise Exception("unknown message type")
-    
+
     def add_message(self, role, content, messages=None):
         if messages is None:
             messages = []
@@ -85,15 +81,14 @@ class BaseAgent(Executable):
                 self.append_message(history_action["role"], history_action["content"], messages)
         return messages
 
-    @abstractmethod
     def forward(self, messages, **kwargs):
         results = dict()
         return messages, results
 
     def execute(self, messages, **kwargs):
-        begin_t = datetime.now().timestamp()
+        begin_t = time.time()
         messages, results = self.forward(messages, **kwargs)
-        end_t = datetime.now().timestamp()
+        end_t = time.time()
         self.log("network", f"AGENT {self.id} time cost: {end_t - begin_t}", self.id)
         time_cost = end_t - begin_t
         self.time_costs.append(UsageTime(begin_t, time_cost))
@@ -101,15 +96,17 @@ class BaseAgent(Executable):
 
     def chat_llm(self, messages):
         # todo 该时间不精准，应该取execute的开始时间
-        time_chat_begin = datetime.now().timestamp()
+        time_chat_begin = time.time()
         assistant_message = chat_llm(messages, self.model)
         messages.append(assistant_message)
         self.log(assistant_message.role, assistant_message.content)
-        usage_token_map = {'completion_tokens': assistant_message.completion_token_num, 'prompt_tokens': assistant_message.prompt_token_num,
+        usage_token_map = {'completion_tokens': assistant_message.completion_token_num,
+                           'prompt_tokens': assistant_message.prompt_token_num,
                            'total_tokens': assistant_message.token_num, 'total_cost': assistant_message.token_cost,
-                           'completion_cost': assistant_message.completion_token_cost, 'prompt_cost': assistant_message.prompt_token_cost}
+                           'completion_cost': assistant_message.completion_token_cost,
+                           'prompt_cost': assistant_message.prompt_token_cost}
         self.usages.append(UsageToken(time_chat_begin, usage_token_map))
-        
+
         ctx.register_llm_action(messages)
         self.log("network", f"STEP TOKEN NUM: {assistant_message.token_num} COST: {assistant_message.token_cost}")
         if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
@@ -157,48 +154,48 @@ class BaseAgentGroup(Executable):
         self.params = self.config.get("params")
         self.results = self.config.get("results")
 
-        self.agents: Dict[str, List[GroupAgent]] = {}
+        self.agents: dict[str, list[GroupAgent]] = {}
         self.start_agent = self.config.get("start_agent")
 
-        self.current_agents_name: List[str] = []
+        self.current_agents_name: list[str] = []
         self.agent_communication_prompt = dict()
         self.context = dict()
 
         self.tools = []
 
-    def load_agents(self, agent_dir, file_suffix=".yaml") -> list[BaseAgent]:
-        agents = []
-        for agent_name in self.config["agents"]:
-            exist_agent_vertex = self.graph.get_vertex(agent_name)
-            if exist_agent_vertex is not None:
-                agent = exist_agent_vertex.executable
-            else:
-                with open(os.path.join(agent_dir, agent_name + file_suffix), "r", encoding="utf-8") as f:
-                    agent_config = yaml.safe_load(f)
-                agent = self.import_agent(agent_config)
-            agents.append(agent)
-            self.agents.setdefault(agent_name, [])
-            self.agents[agent_name].append(GroupAgent(datetime.now().timestamp(), agent_name))
-            self.current_agents_name.append(agent_name)
-        return agents
+    # def load_agents(self, agent_dir, file_suffix=".yaml") -> list[BaseAgent]:
+    #     agents = []
+    #     for agent_name in self.config["agents"]:
+    #         exist_agent_vertex = self.graph.get_vertex(agent_name)
+    #         if exist_agent_vertex is not None:
+    #             agent = exist_agent_vertex.executable
+    #         else:
+    #             with open(mp.path_join(agent_dir, agent_name + file_suffix), "r", encoding="utf-8") as f:
+    #                 agent_config = yaml.safe_load(f)
+    #             agent = self.import_agent(agent_config)
+    #         agents.append(agent)
+    #         self.agents.setdefault(agent_name, [])
+    #         self.agents[agent_name].append(GroupAgent(time.time(), agent_name))
+    #         self.current_agents_name.append(agent_name)
+    #     return agents
 
     def load_agent(self, agent_dir, agent_file, agent_name) -> BaseAgent:
         exist_agent_vertex = self.graph.get_vertex(agent_name)
         if exist_agent_vertex is not None:
             agent = exist_agent_vertex.executable
         else:
-            with open(os.path.join(agent_dir, agent_file), "r", encoding="utf-8") as f:
+            with open(mp.path_join(agent_dir, agent_file), "r", encoding="utf-8") as f:
                 agent_config = json.load(f)
-                agent_module = importlib.import_module("agent")
+                agent_module = __import__("agent")
                 agent_class = getattr(agent_module, agent_name)
                 agent = agent_class(self.graph, agent_config, self.logger)
                 self.agents.setdefault(agent_name, [])
-                self.agents[agent_name].append(GroupAgent(datetime.now().timestamp(), agent_name))
+                self.agents[agent_name].append(GroupAgent(time.time(), agent_name))
                 self.current_agents_name.append(agent_name)
         return agent
 
     def import_agent(self, agent_config):
-        agent_module = importlib.import_module("agent")
+        agent_module = __import__("agent")
         agent_class = getattr(agent_module, agent_config["id"])
         agent = agent_class(self.graph, agent_config, self.logger)
         return agent
@@ -215,13 +212,13 @@ class BaseAgentGroup(Executable):
     def add_agent(self, name):
         assert name not in list(self.current_agents_name), f"agent {name} already exist in group {self.id}"
         self.agents.setdefault(name, [])
-        self.agents[name].append(GroupAgent(datetime.now().timestamp(), name))
+        self.agents[name].append(GroupAgent(time.time(), name))
 
     def remove_agent(self, name):
         assert name in list(self.current_agents_name), f"agent {name} not exist in group {self.id}"
         group_agent_list = self.agents[name]
         self.current_agents_name.remove(name)
-        group_agent_list[len(group_agent_list) - 1].end_timestamp = datetime.now().timestamp()
+        group_agent_list[len(group_agent_list) - 1].end_timestamp = time.time()
         self.logger.log("Agent-Network-Group", f"agent: {name} has been removed from group: {self.id}", self.id)
 
     def remove_agent_if_exist(self, name):

@@ -1,11 +1,11 @@
 from agent_network.network.network import Network
-import os
-from os import _exit
-import yaml
+import agent_network.utils.micropython as mp
+import ujson
+import uos
 from agent_network.utils.logger import Logger
 from agent_network.distributed.service.nacos.nacos_client import NacosClient
-import traceback
-import asyncio
+import uasyncio as asyncio
+import esp32_init
 
 logger = Logger("log")
 network = Network('agent-network', None, None, None, logger)
@@ -15,12 +15,15 @@ def load():
     try:
         service_configs = []
         service_clients = []
-        service_config_path = os.path.join(os.getcwd(), 'config/service.yml')
-        if os.path.exists(service_config_path):
+        print(uos.listdir())
+        service_config_path = mp.path_join(uos.getcwd(), 'config/service.json')
+        if mp.path_exists(service_config_path):
             with open(service_config_path, "r", encoding="UTF-8") as f:
-                service_config = yaml.safe_load(f)
+                service_config = ujson.load(f)
                 service_configs.append(service_config)
         for service_config in service_configs:
+            if "wifi" in service_config and "password" in service_config:
+                esp32_init.init(service_config["wifi"], service_config["password"])
             if 'center_type' in service_config:
                 pass
             elif 'enabled' in service_config and not bool(service_config['enabled']):
@@ -41,12 +44,11 @@ def load():
                 # service_client.update_all_services_vertexes()
                 service_clients.append(service_client)
         network.register_clients(service_clients)
-        network.load("config/network.yaml")
+        network.load("config/network.json")
     except Exception as e:
         print(f"Agent-network load error, please check config file: {e}")
-        traceback.print_exc()
         network.release()
-        _exit(0)
+        # _exit(0)
 
 
 load()

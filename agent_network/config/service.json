@@ -1,0 +1,13 @@
+{
+  "service_group": "agent-network",
+  "service_name": "agent-network-service",
+  "access_key": "",
+  "secret_key": "",
+  "center_addr": "http://localhost:8848",
+  "ip": "127.0.0.1",
+  "port": "18080",
+  "enabled": false,
+  "wifi": "Xiaomi_LB",
+  "password": "libing2015",
+  "device": "esp32"
+}

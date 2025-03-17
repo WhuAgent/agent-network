@@ -1,18 +1,15 @@
-from abc import abstractmethod
-from datetime import datetime
+import time
 
 
 class Executable:
     def __init__(self, id, description):
         self.id = id
         self.description = description
-        self.create_time = datetime.now().timestamp()
+        self.create_time = time.time()
 
-    @abstractmethod
     def execute(self, input_content, **kwargs):
         pass
 
-    @abstractmethod
     def release(self):
         pass
 
@@ -24,10 +21,8 @@ class ParameterizedExecutable(Executable):
         self.results = results
         self.description = description
 
-    @abstractmethod
     def execute(self, input_content, **kwargs):
         pass
 
-    @abstractmethod
     def release(self):
         pass

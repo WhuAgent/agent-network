@@ -1,8 +1,8 @@
-from datetime import datetime
 from agent_network.network.executable import Executable, ParameterizedExecutable
 from agent_network.base import BaseAgent
 import agent_network.graph.context as ctx
 from agent_network.exceptions import RetryError, ReportError
+import time
 
 
 class Vertex(ParameterizedExecutable):
@@ -24,11 +24,11 @@ class Vertex(ParameterizedExecutable):
         kwargs.update(ctx.retrieves([param["name"] for param in self.params]))
         if error_message := ctx.retrieve("graph_error_message"):
             kwargs["graph_error_message"] = error_message
-        begin_t = datetime.now().timestamp()
+        begin_t = time.time()
         try:
             messages, results = self.executable.execute(messages, **kwargs)
         except RetryError as e:
-            end_t = datetime.now().timestamp()
+            end_t = time.time()
             ctx.register_time(end_t - begin_t)
             if kwargs.get("graph_error_message"):
                 kwargs["graph_error_message"].append(e.message)
@@ -39,7 +39,7 @@ class Vertex(ParameterizedExecutable):
             else:
                 raise Exception(e, "Task Failed")
         except ReportError as e:
-            end_t = datetime.now().timestamp()
+            end_t = time.time()
             ctx.register_time(end_t - begin_t)
             results = e.error_message
             next_executors = [e.next_vertex]
@@ -48,7 +48,7 @@ class Vertex(ParameterizedExecutable):
         except Exception as e:
             raise Exception(e, "Task Failed")
         else:
-            end_t = datetime.now().timestamp()
+            end_t = time.time()
             ctx.register_time(end_t - begin_t)
             default_next_executors = [exe for exe in self.next_executables] if len(self.next_executables) > 0 else None
             next_executors = [results.get("next_agent")] if results.get(

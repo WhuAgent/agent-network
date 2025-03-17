@@ -1,11 +1,10 @@
 import json
 import time
-from abc import abstractmethod
 from agent_network.network.network import Network
 from agent_network.distributed.service.service_config import VertexConfig
 from agent_network.network.vertexes.vertex import ThirdPartyVertex
 from agent_network.network.vertexes.third_party.executable import ThirdPartyExecutable
-import threading
+import uasyncio as asyncio
 
 
 class Client:
@@ -19,44 +18,38 @@ class Client:
         self.ip = ip
         self.port = port
 
-    @abstractmethod
     def connect(self):
         pass
 
-    @abstractmethod
     def register(self, vertexes):
         pass
 
-    @abstractmethod
     def deregister(self):
         pass
 
     # TODO 在graph发生动态变化时调用
-    @abstractmethod
+
     def update(self, vertexes):
         pass
 
-    @abstractmethod
     def get_service(self, service_name, service_group) -> [VertexConfig]:
         pass
 
-    @abstractmethod
     def list_service(self) -> [VertexConfig]:
         pass
 
-    @abstractmethod
     def release(self):
         pass
 
     def register_vertexes(self, vertexes_configs: list[VertexConfig]):
         third_party_vertexes = [ThirdPartyVertex(self.network,
-                                              ThirdPartyExecutable(
-                                                vertex_config.name, vertex_config.task,
-                                                vertex_config.description, vertex_config.service_group,
-                                                vertex_config.service_name, vertex_config.ip, vertex_config.port
-                                            ),
-                                              vertex_config.params, vertex_config.results)
-                             for vertex_config in vertexes_configs]
+                                                 ThirdPartyExecutable(
+                                                     vertex_config.name, vertex_config.task,
+                                                     vertex_config.description, vertex_config.service_group,
+                                                     vertex_config.service_name, vertex_config.ip, vertex_config.port
+                                                 ),
+                                                 vertex_config.params, vertex_config.results)
+                                for vertex_config in vertexes_configs]
         third_party_vertexes_map = {}
         for third_party_vertex in third_party_vertexes:
             service_name = third_party_vertex.executable.service_name
@@ -84,8 +77,7 @@ class Client:
                 self.register_vertexes(vertex_configs)
                 time.sleep(5)
 
-        update_all_thread = threading.Thread(target=recycle_list_service)
-        update_all_thread.start()
+        asyncio.run(recycle_list_service)
 
     def get_metadata(self, vertexes):
         metadata = [

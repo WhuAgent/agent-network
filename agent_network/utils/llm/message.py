@@ -1,5 +1,3 @@
-from openai.types.completion_usage import CompletionUsage
-
 model_cost = {
     "gpt-3.5-turbo": {
         "prompt_token": 0.0035,

@@ -1,10 +1,8 @@
-import os
-
+import agent_network.utils.micropython as mp
+import uos
 from agent_network.network.executable import Executable
 import agent_network.graph.context as ctx
-import threading
 from agent_network.network.route import Route
-from typing import Dict, List
 from agent_network.entity.usage import UsageTime, UsageToken
 from agent_network.network.vertexes.vertex import Vertex
 from agent_network.network.vertexes.graph_vertex import GroupVertex, AgentVertex
@@ -12,10 +10,9 @@ from agent_network.base import BaseAgentGroup
 from agent_network.network.vertexes.vertex import ThirdPartyVertex
 from agent_network.network.vertexes.third_party.executable import ThirdPartyExecutable
 from agent_network.utils.stats import *
-import yaml
 import json
-import importlib
-import asyncio
+import ujson
+import uasyncio as asyncio
 
 
 class Network(Executable):
@@ -33,66 +30,66 @@ class Network(Executable):
                                       "completion_cost": 0, "prompt_cost": 0, "total_cost": 0}
         self.logger = logger
         self.current_groups_name = []
-        self.agents_usages_time_history: Dict[str, List[UsageTime]] = {}
-        self.agents_usages_token_history: Dict[str, List[UsageToken]] = {}
+        self.agents_usages_time_history: dict[str, list[UsageTime]] = {}
+        self.agents_usages_token_history: dict[str, list[UsageToken]] = {}
 
         self.clients = []
         self.third_party_vertexes = {}
 
     def load(self, config_path):
         with open(config_path, "r", encoding="UTF-8") as f:
-            self.config = yaml.safe_load(f)
+            self.config = ujson.load(f)
 
         def find_config_file(dir, target):
-            for config_file in os.listdir(dir):
+            for config_file in uos.listdir(dir):
                 if config_file[:config_file.rfind(".")] == target:
                     return config_file
             raise Exception(f"target: {target} load failed")
 
-        group_dir = os.path.join("config", "group")
-        agent_dir = os.path.join("config", "agent")
-        link_dir = os.path.join("config", "link")
+        group_dir = mp.path_join("config", "group")
+        agent_dir = mp.path_join("config", "agent")
+        link_dir = mp.path_join("config", "link")
         for group_name in self.config["groups"]:
-            group_config_path = os.path.join(group_dir, find_config_file(group_dir, group_name))
-            if ".yaml" == group_config_path[-5:]:
-                with open(group_config_path, "r", encoding="utf-8") as f:
-                    configs = yaml.safe_load(f)
-                    if "ref_id" in configs:
-                        group = self.import_group(configs)
-                    else:
-                        group = BaseAgentGroup(self, self.route, configs, self.logger)
-                    if "routes" in configs:
-                        for route in configs["routes"]:
-                            if group.start_agent is None and route["source"] == "start":
-                                group.start_agent = route["target"]
-                                self.add_route(group, group.id, route["target"], "hard")
-                                break
-                        for route in configs["routes"]:
-                            if route["source"] == "start":
-                                continue
-                            self.add_route(group, route["source"], route["target"],
-                                       route["rule"] if "rule" in route else "soft")
-                    agents = group.load_agents(agent_dir, ".yaml")
+            group_config_path = mp.path_join(group_dir, find_config_file(group_dir, group_name))
+            # if ".yaml" == group_config_path[-5:]:
+            #     with open(group_config_path, "r", encoding="utf-8") as f:
+            #         configs = yaml.safe_load(f)
+            #         if "ref_id" in configs:
+            #             group = self.import_group(configs)
+            #         else:
+            #             group = BaseAgentGroup(self, self.route, configs, self.logger)
+            #         if "routes" in configs:
+            #             for route in configs["routes"]:
+            #                 if group.start_agent is None and route["source"] == "start":
+            #                     group.start_agent = route["target"]
+            #                     self.add_route(group, group.id, route["target"], "hard")
+            #                     break
+            #             for route in configs["routes"]:
+            #                 if route["source"] == "start":
+            #                     continue
+            #                 self.add_route(group, route["source"], route["target"],
+            #                            route["rule"] if "rule" in route else "soft")
+            #         agents = group.load_agents(agent_dir, ".yaml")
+            #
+            #         self.add_vertex(group.id, GroupVertex(self, group, group.params, group.results))
+            #         for agent in agents:
+            #             self.add_vertex(agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
+            # self.add_route(group, group_name, agent.id, "soft")
 
-                    self.add_vertex(group.id, GroupVertex(self, group, group.params, group.results))
-                    for agent in agents:
-                        self.add_vertex(agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
-                        # self.add_route(group, group_name, agent.id, "soft")
-
-            elif ".json" == group_config_path[-5:]:
+            if ".json" == group_config_path[-5:]:
                 with open(group_config_path, "r", encoding="utf-8") as f:
                     configs = json.load(f)
                     group = BaseAgentGroup(self, self.route, configs, self.logger)
                     self.add_vertex(group.id, GroupVertex(self, group, group.params, group.results))
                     for agent in configs["agents"]:
                         agent_file = find_config_file(agent_dir, agent)
-                        agent_config_path = os.path.join(agent_dir, agent_file)
+                        agent_config_path = mp.path_join(agent_dir, agent_file)
                         if ".json" == agent_config_path[-5:]:
                             agent = group.load_agent(agent_dir, agent_file, agent)
                             self.add_vertex(agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
                             # self.add_route(group, group_name, agent.id, "soft")
                     link_file = find_config_file(link_dir, group_name + "Link")
-                    link_config_path = os.path.join(link_dir, link_file)
+                    link_config_path = mp.path_join(link_dir, link_file)
                     if ".json" == link_config_path[-5:]:
                         with open(link_config_path, "r", encoding="utf-8") as f:
                             configs = json.load(f)
@@ -116,14 +113,14 @@ class Network(Executable):
         self.refresh_vertexes_from_clients()
         self.load_route()
 
-    def import_group(self, group_config):
-        if "load_type" in group_config and group_config["load_type"] == "module":
-            group_module = importlib.import_module(group_config["loadModule"])
-            group_class = getattr(group_module, group_config["loadClass"])
-            group_instance = group_class(self, self.route, group_config, self.logger)
-        else:
-            raise Exception("Group load type must be module!")
-        return group_instance
+    # def import_group(self, group_config):
+    #     if "load_type" in group_config and group_config["load_type"] == "module":
+    #         group_module = importlib.import_module(group_config["loadModule"])
+    #         group_class = getattr(group_module, group_config["loadClass"])
+    #         group_instance = group_class(self, self.route, group_config, self.logger)
+    #     else:
+    #         raise Exception("Group load type must be module!")
+    #     return group_instance
 
     def load_route(self):
         self.route = Route()
@@ -273,7 +270,8 @@ class Network(Executable):
         return name in self.vertexes
 
     def add_route(self, group, source, target, rule):
-        if source != group.id and source != "start" and source not in group.agents.keys() or (source == group.id and target != group.start_agent):
+        if source != group.id and source != "start" and source not in group.agents.keys() or (
+                source == group.id and target != group.start_agent):
             raise Exception(
                 f"group: {group.id}, link: source-{source}-target-{target} illegal.")
         self.routes.append({
@@ -341,38 +339,3 @@ class Network(Executable):
             self.logger.log("Agent-Network-Graph",
                             f"VERTEX: {third_party_vertex_key} TYPE: ThirdPartyNode has been removed from the graph",
                             self.name)
-
-
-# TODO 基于感知层去调度graph及其智能体
-class GraphStart:
-    def __init__(self, network: Network):
-        self.network = network
-
-    def execute(self, start_vertexes):
-        for start_vertex in start_vertexes:
-            assert start_vertex in self.network.vertexes, f"vertexes: {start_vertex} is not in graph: {self.network.name}"
-        start_vertexes = [self.network.vertexes[start_vertex] for start_vertex in start_vertexes]
-        vertexes_threads = []
-        for start_vertex in start_vertexes:
-            current_ctx = ctx.retrieve_global_all()
-            vertex_thread = threading.Thread(
-                target=lambda sv=start_vertex: (
-                    ctx.shared_context(current_ctx),
-                    sv.execute(),
-                    ctx.registers_global(
-                        ctx.retrieves(
-                            [result["name"] for result in self.network.results] if self.network.results else []))
-                )
-            )
-            vertexes_threads.append(vertex_thread)
-
-        for vertex_thread in vertexes_threads:
-            vertex_thread.start()
-        for vertex_thread in vertexes_threads:
-            vertex_thread.join()
-
-    def add_vertex(self, name, vertex):
-        self.network.add_vertex(name, vertex)
-
-    def get_vertex(self, name):
-        return self.network.get_vertex(name)

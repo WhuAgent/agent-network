@@ -1,9 +1,8 @@
-import threading
-
 from agent_network.utils.llm.message import Message
+import _thread
 
-thread_local_data = threading.local()
 global_map = {}
+global_thread_map = {}
 graph_key = "$$$$$Graph$$$$$"
 graph_id_key = "$$$$$GraphID$$$$$"
 
@@ -37,13 +36,15 @@ def release_global():
 
 
 def init():
-    if not hasattr(thread_local_data, 'context'):
-        thread_local_data.context = {}
+    id = _thread.get_ident()
+    if id not in global_thread_map:
+        global_thread_map[id] = {}
 
 
 def register(key, value):
+    id = _thread.get_ident()
     init()
-    thread_local_data.context[key] = value
+    global_thread_map[id][key] = value
 
 
 def registers(params_map):
@@ -54,8 +55,8 @@ def registers(params_map):
 
 
 def retrieve(key):
-    init()
-    return thread_local_data.context.get(key)
+    id = _thread.get_ident()
+    return global_thread_map[id].get(key)
 
 
 def retrieves(keys):
@@ -64,12 +65,14 @@ def retrieves(keys):
 
 def retrieves_all():
     init()
-    return thread_local_data.context
+    id = _thread.get_ident()
+    return global_thread_map[id]
 
 
 def release():
-    if hasattr(thread_local_data, 'context'):
-        thread_local_data.context.clear()
+    id = _thread.get_ident()
+    if id in global_thread_map:
+        global_thread_map[id].clear()
 
 
 def shared_context(ctx):
@@ -78,10 +81,13 @@ def shared_context(ctx):
 
 
 def delete(key):
-    thread_local_data.context.pop(key)
+    id = _thread.get_ident()
+    global_thread_map[id].pop(key)
 
 
 def register_graph(id, graph):
+    init()
+    id = _thread.get_ident()
     if retrieve(graph_key) is not None or retrieve(graph_id_key) is not None:
         raise Exception("graph register duplicated")
     register(graph_key, graph)

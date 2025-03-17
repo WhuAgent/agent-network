@@ -1,17 +1,19 @@
-import threading
-
 from agent_network.graph.graph import Graph
-from flask import Flask, request
+import uasyncio as asyncio
+from microdot import Microdot, Response
 from agent_network.constant import network, logger
 
-app = Flask(__name__)
+app = Microdot()
+Response.default_content_type = "application/json"
 
+import sys
+sys.path.append('/')
 
-@app.route('/service', methods=['POST'])
-def service():
+@app.post('/service')
+async def service(request):
     context = request.json
-    assert context['flowId'] is not None, "智能体流程节点未找到"
-    assert context['task'] is not None, "智能体任务未找到"
+    if not context or 'flowId' not in context or 'task' not in context:
+        return {"error": "缺少必要的参数 flowId 或 task"}, 400
     graph = Graph(logger)
     graph.execute(network, context['flowId'], context['params'])
     result = graph.retrieve_results()
@@ -19,10 +21,11 @@ def service():
     return result
 
 
-def run_web(debug=False):
+async def run_web(debug=False):
     app.run(host='0.0.0.0', port=18080, debug=debug)
 
 
 if __name__ == '__main__':
-    web_thread = threading.Thread(target=run_web)
-    web_thread.start()
+    asyncio.run(run_web())
+    while True:
+        pass

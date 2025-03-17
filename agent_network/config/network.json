@@ -1,0 +1,21 @@
+{
+  "name": "AgentService1",
+  "description": "计算智能体网络",
+  "groups": [
+    "AgentGroup1"
+  ],
+  "context": [
+    {
+      "name": "number1",
+      "type": "str"
+    },
+    {
+      "name": "number2",
+      "type": "str"
+    },
+    {
+      "name": "true_result",
+      "type": "str"
+    }
+  ]
+}

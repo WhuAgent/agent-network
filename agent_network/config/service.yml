@@ -9,3 +9,6 @@
 "ip": "127.0.0.1"
 "port": "18080"
 "enabled": false
+"wifi": ""
+"password": ""
+"device": "esp32"
