@@ -1,5 +1,6 @@
 import uuid
 import traceback
+import json
 
 from agent_network.graph.history import History
 from agent_network.network.network import Network
@@ -7,6 +8,8 @@ from agent_network.network.route import Route
 from agent_network.graph.task_vertex import TaskVertex
 import agent_network.graph.context as ctx
 from agent_network.graph.trace import Trace
+from agent_network.task.task_call import Parameter
+from agent_network.network.vertexes.third_party.executable import ThirdPartyExecutable, ThirdPartySchedulerExecutable
 
 
 class Graph:
@@ -79,23 +82,83 @@ class Graph:
                     self.vertex_messages[vertex] = [system_message]
                 else:
                     self.vertex_messages[vertex] = []
-            return self._execute_graph(network,
-                                       network.route,
-                                       [TaskVertex(id="start")],
-                                       [TaskVertex(network.get_vertex(start_vertex))],
-                                       params, results)
+            return self._execute_graph(
+                self.id,
+                network,
+                network.route,
+                [TaskVertex(id="start")],
+                [TaskVertex(network.get_vertex(start_vertex))],
+                [],
+                params, results)
         except Exception as e:
             traceback.print_exc()
             self.release()
             raise Exception(e)
 
+    def execute_task_call(self, task_id, graph, network: Network, start_vertex, params: list[Parameter], organizeId):
+        graph = json.load(graph)
+        if "trace_id" not in graph or "total_level" not in graph or "level_details" not in graph or graph[
+            "total_level"] != len(graph["level_details"]):
+            raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
+        graph_level = graph["total_level"]
+        # 按照执行图回放
+        for level in range(graph_level):
+            level_detail = graph["level_details"][level]
+            self.trace.add_vertexes(level_detail["level_vertexes"])
+            # 按照span注册上下文
+            for level_span, span_detail in level_detail["level_spans"].items():
+                span_params = span_detail["params"]
+                for span_param in span_params:
+                    ctx.register(span_param["name"], span_param["value"])
+                span_results = span_detail["results"]
+                for span_result in span_results:
+                    ctx.register(span_result["name"], span_result["value"])
+            # 恢复route
+            for level_route_vertex, level_target_map in level_detail["level_routes"].items():
+                level_route_vertexes = []
+                for level_target in level_target_map.keys():
+                    level_route_vertexes.append(network.get_vertex(level_target))
+                self.trace.add_spans(network.get_vertex(level_route_vertex), level_route_vertexes)
+        graph_front = graph["level_details"][graph_level - 1]
+        if "level_routes" not in graph_front:
+            raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
+        third_party_scheduler_executable = ThirdPartySchedulerExecutable(task_id, self, organizeId,
+                                                                         None)
+        try:
+            vertexes = network.get_vertexes()
+            if start_vertex not in [vertex.name for vertex in vertexes]:
+                raise Exception(
+                    f"task: {graph['trace_id']}, graph error, vertex not found: {start_vertex}, graph: {graph}")
+            # TODO 分布式下如何处理vertex_messages
+            for vertex in vertexes:
+                if system_message := network.get_vertex(vertex).get_system_message():
+                    self.vertex_messages[vertex] = [system_message]
+                else:
+                    self.vertex_messages[vertex] = []
+            results = self._execute_graph(task_id, network,
+                                          network.route,
+                                          [TaskVertex(id="start")],
+                                          [TaskVertex(network.get_vertex(start_vertex))],
+                                          [],
+                                          params, organizeId)
+            third_party_scheduler_executable.synchronize()
+            return results
+        except Exception as e:
+            traceback.print_exc()
+            third_party_scheduler_executable.synchronize()
+            self.release()
+            raise Exception(e)
+
     def _execute_graph(self,
+                       task_id,
                        network: Network,
                        route: Route,
                        father_task_vertexes: list[TaskVertex],
                        task_vertexes: list[TaskVertex],
+                       third_party_next_task_vertexes: list[TaskVertex] = [],
                        params=None,
-                       results=["result"]):
+                       results=["result"],
+                       organizeId=None):
         if task_vertexes is None or len(task_vertexes) == 0:
             return
         self.trace.add_vertexes([n.id for n in task_vertexes])
@@ -107,8 +170,13 @@ class Graph:
             raise Exception("Max step reached, Task Failed!")
         if params:
             ctx.registers(params)
+        if len(third_party_next_task_vertexes) > 0:
+            third_party_scheduler_executable = ThirdPartySchedulerExecutable(task_id, self, organizeId,
+                                                                             self.trace.get_level_routes_front())
+            third_party_scheduler_executable.execute()
         # TODO 由感知层根据任务激活决定触发哪些 Agent，现在默认线性执行所有 TaskNode
         next_task_vertexes: list[TaskVertex] = []
+        third_party_next_task_vertexes: list[TaskVertex] = []
         for task_vertex in task_vertexes:
             current_next_task_vertexes = []
             # todo 讨论是否需要合并message到上下文中
@@ -139,13 +207,20 @@ class Graph:
                         if target != "COMPLETE":
                             next_task_vertex = TaskVertex(network.get_vertex(next_executable))
                             current_next_task_vertexes.append(next_task_vertex)
-                self.trace.add_spans(task_vertex.id, [nv.id for nv in current_next_task_vertexes], messages, cur_execution_result)
+                self.trace.add_spans(task_vertex.executable, [nv.executable for nv in current_next_task_vertexes],
+                                     messages)
+                current_third_party_next_task_vertexes = [ns for ns in current_next_task_vertexes if
+                                                          isinstance(ns.executable, ThirdPartyExecutable)]
+                current_next_task_vertexes = [ns for ns in current_next_task_vertexes if
+                                              not isinstance(ns.executable, ThirdPartyExecutable)]
+                third_party_next_task_vertexes.extend(current_third_party_next_task_vertexes)
                 next_task_vertexes.extend(current_next_task_vertexes)
             except Exception as e:
                 self.release()
                 raise Exception(e)
-        if len(next_task_vertexes) > 0:
-            self._execute_graph(network, route, task_vertexes, next_task_vertexes)
+        if len(next_task_vertexes) > 0 or len(third_party_next_task_vertexes) > 0:
+            self._execute_graph(task_id, network, route, task_vertexes, next_task_vertexes,
+                                third_party_next_task_vertexes)
         return ctx.retrieves_all()
 
     def register_time_cost(self, time_cost):
@@ -154,7 +229,9 @@ class Graph:
     def retrieve_result(self, key):
         return ctx.retrieve_global(key)
 
-    def retrieve_results(self, results):
+    def retrieve_results(self, results=None):
+        if results is None:
+            return ctx.retrieve_global_all()
         return {key: ctx.retrieve_global(key) for key in results}
 
     def release(self):

@@ -21,6 +21,7 @@ class BaseAgent(Executable):
         self.config = config
         self.graph = graph
         self.title = self.config["title"] if "title" in self.config else self.id
+        self.name = self.config["name"] if "name" in self.config else self.id
         self.description = self.config["description"]
         self.class_name = self.config["ref_id"] if "ref_id" in self.config else self.id
         self.role = self.config["role"] if "role" in self.config else self.id
@@ -176,6 +177,8 @@ class BaseAgentGroup(Executable):
         self.logger = logger
         self.graph = graph
         self.route = route
+        self.title = config["title"]
+        self.name = config["name"]
         self.class_name = self.config["ref_id"] if "ref_id" in self.config else self.id
 
         self.params = self.config.get("params")

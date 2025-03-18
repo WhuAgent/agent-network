@@ -4,6 +4,7 @@ from abc import abstractmethod
 from agent_network.network.network import Network
 from agent_network.distributed.service.service_config import VertexConfig
 from agent_network.network.vertexes.vertex import ThirdPartyVertex
+from agent_network.network.vertexes.graph_vertex import AgentVertex, GroupVertex
 from agent_network.network.vertexes.third_party.executable import ThirdPartyExecutable
 import threading
 
@@ -50,13 +51,13 @@ class Client:
 
     def register_vertexes(self, vertexes_configs: list[VertexConfig]):
         third_party_vertexes = [ThirdPartyVertex(self.network,
-                                              ThirdPartyExecutable(
-                                                vertex_config.name, vertex_config.task,
-                                                vertex_config.description, vertex_config.service_group,
-                                                vertex_config.service_name, vertex_config.ip, vertex_config.port
-                                            ),
-                                              vertex_config.params, vertex_config.results)
-                             for vertex_config in vertexes_configs]
+                                                 ThirdPartyExecutable(
+                                                     vertex_config.name, vertex_config.task,
+                                                     vertex_config.description, vertex_config.service_group,
+                                                     vertex_config.service_name, vertex_config.ip, vertex_config.port
+                                                 ),
+                                                 vertex_config.params, vertex_config.results)
+                                for vertex_config in vertexes_configs]
         third_party_vertexes_map = {}
         for third_party_vertex in third_party_vertexes:
             service_name = third_party_vertex.executable.service_name
@@ -90,7 +91,7 @@ class Client:
     def get_metadata(self, vertexes):
         metadata = [
             {
-                "name": vertex.id,
+                "name": vertex.group + "/" + vertex.id if isinstance(vertex, AgentVertex) else vertex.id,
                 "description": vertex.description,
                 "title": vertex.title,
                 "params": vertex.params,
@@ -98,6 +99,6 @@ class Client:
                 "ip": self.ip,
                 "port": self.port
             }
-            for vertex in vertexes
+            for vertex in vertexes if isinstance(vertex, AgentVertex) or isinstance(vertex, GroupVertex)
         ]
         return json.dumps(metadata)

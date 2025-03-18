@@ -19,6 +19,24 @@ def service():
     return result
 
 
+@app.route('/service/graph', methods=['POST'])
+def service_graph():
+    context = request.json
+    assert context['graph'] is not None, "智能体执行图未找到"
+    assert context['vertex'] is not None, "智能体流程节点未找到"
+    assert context['parameterList'] is not None, "智能体流程参数未找到"
+    assert context['organizeId'] is not None, "智能体流程组织架构参数未找到"
+    assert context['taskId'] is not None, "智能体流程任务ID参数未找到"
+    if "trace_id" not in context['graph']:
+        Exception(f"task error: {context['graph']}")
+    graph = Graph(logger, context['graph']["trace_id"])
+    graph.organizeId = context['organizeId']
+    graph.execute_task_call(context['taskId'], context['graph'], network, context['vertex'], context["parameterList"], context['organizeId'])
+    result = graph.retrieve_results()
+    graph.release()
+    return result
+
+
 def run_web(debug=False):
     app.run(host='0.0.0.0', port=18080, debug=debug)
 
@@ -26,7 +44,7 @@ def run_web(debug=False):
 if __name__ == '__main__':
     web_thread = threading.Thread(target=run_web)
     web_thread.start()
-    
+
 """
 Example Request:
 

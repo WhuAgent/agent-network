@@ -6,6 +6,9 @@ class GroupVertex(FirstPartyVertex):
     def __init__(self, network, executable: Executable, params, results):
         super().__init__(network, executable, params, results)
         self.group = executable.id
+        self.title = executable.title
+        self.name = executable.name
+        self.description = executable.description
 
     # def release(self):
     #     return self.executable.release()
@@ -15,6 +18,9 @@ class AgentVertex(FirstPartyVertex):
     def __init__(self, network, executable: Executable, params, results, group):
         super().__init__(network, executable, params, results)
         self.group = group
+        self.title = executable.title
+        self.name = executable.name
+        self.description = executable.description
 
     # def release(self):
     #     usages, time_costs = self.executable.release()
