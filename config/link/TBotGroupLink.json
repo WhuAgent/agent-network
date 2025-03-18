@@ -1,0 +1,20 @@
+{
+  "group": "TBotGroup",
+  "links": [
+    {
+      "source": "start",
+      "target": "worker",
+      "type": "soft"
+    },
+    {
+      "source": "worker",
+      "target": "ocr_tool",
+      "type": "soft"
+    },
+    {
+      "source": "ocr_tool",
+      "target": "worker",
+      "type": "hard"
+    }
+  ]
+}

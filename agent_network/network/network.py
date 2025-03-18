@@ -87,15 +87,15 @@ class Network(Executable):
                     for agent in configs["agents"]:
                         agent_file = find_config_file(agent_dir, agent)
                         agent_config_path = os.path.join(agent_dir, agent_file)
-                        if ".json" == agent_config_path[-5:]:
+                        if agent_config_path[-5:] in [".json", ".yaml"]:
                             agent = group.load_agent(agent_dir, agent_file, agent)
                             self.add_vertex(agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
                             # self.add_route(group, group_name, agent.id, "soft")
                     link_file = find_config_file(link_dir, group_name + "Link")
                     link_config_path = os.path.join(link_dir, link_file)
-                    if ".json" == link_config_path[-5:]:
+                    if link_config_path[-5:] in [".json", ".yaml"]:
                         with open(link_config_path, "r", encoding="utf-8") as f:
-                            configs = json.load(f)
+                            configs = json.load(f) if link_config_path[-5:] == ".json" else yaml.safe_load(f)
                             if configs["group"] != group_name:
                                 raise Exception(f"links' group match failed: {link_config_path}")
                             for link in configs["links"]:
@@ -143,9 +143,9 @@ class Network(Executable):
         ctx.shared_context(current_ctx)
         if vertex not in self.vertexes:
             raise Exception(f'vertex: {vertex} is absent from graph')
-        messages, result, next_executables = self.vertexes.get(vertex).execute(messages, **kwargs)
+        result, next_executables = self.vertexes.get(vertex).execute(messages, **kwargs)
         ctx.registers_global(ctx.retrieves([result["name"] for result in self.results] if self.results else []))
-        return messages, result, next_executables
+        return result, next_executables
 
     def add_vertex(self, name, vertex: Executable):
         if name not in self.vertexes:
