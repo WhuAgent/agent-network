@@ -3,6 +3,7 @@ import threading
 from agent_network.graph.graph import Graph
 from flask import Flask, request
 from agent_network.constant import network, logger
+import json
 
 app = Flask(__name__)
 
@@ -28,9 +29,10 @@ def service_graph():
     assert context['taskId'] is not None, "智能体流程任务ID参数未找到"
     if "trace_id" not in context['graph']:
         Exception(f"task error: {context['graph']}")
-    graph = Graph(logger, context['graph']["trace_id"])
+    graph_dict = json.loads(context['graph'])
+    graph = Graph(logger, graph_dict["trace_id"])
     graph.organizeId = context['organizeId']
-    result = graph.execute_task_call(context['taskId'], context['graph'], network, context['vertex'], context["parameterList"], context['organizeId'])
+    result = graph.execute_task_call(context['taskId'], graph_dict, network, context['vertex'], context["parameterList"], context['organizeId'])
     graph.release()
     return result
 

@@ -54,7 +54,7 @@ class ThirdPartySchedulerExecutable(Executable):
             "params": {
                 "taskId": self.id,
                 "organizeId": self.organizeId,
-                "executionGraph": self.graph.trace
+                "executionGraph": repr(self.graph.trace)
             }
         }
         response = requests.post(self.url, json=data)

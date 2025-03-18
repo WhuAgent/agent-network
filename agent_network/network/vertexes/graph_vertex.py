@@ -19,7 +19,7 @@ class AgentVertex(FirstPartyVertex):
         super().__init__(network, executable, params, results)
         self.group = group
         self.title = executable.title
-        self.name = executable.name
+        self.name = group + "/" + executable.name
         self.description = executable.description
 
     # def release(self):

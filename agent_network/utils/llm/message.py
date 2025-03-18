@@ -171,7 +171,13 @@ class Message:
         return self.content
 
     def __repr__(self):
-        return f"{self.role}: {self.content}"
+        repr_map = {
+            "role": self.role,
+            "content": self.content,
+            "token": self.token_num,
+            "cost": self.token_cost
+        }
+        return f"{repr_map}"
 
 
 class SystemMessage(Message):

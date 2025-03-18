@@ -96,7 +96,6 @@ class Graph:
             raise Exception(e)
 
     def execute_task_call(self, task_id, graph, network: Network, start_vertex, params: list[Parameter], organizeId):
-        graph = json.load(graph)
         if "trace_id" not in graph or "total_level" not in graph or "level_details" not in graph or graph[
             "total_level"] != len(graph["level_details"]):
             raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
@@ -119,14 +118,15 @@ class Graph:
                 for level_target in level_target_map.keys():
                     level_route_vertexes.append(network.get_vertex(level_target))
                 self.trace.add_spans(network.get_vertex(level_route_vertex), level_route_vertexes)
-        graph_front = graph["level_details"][graph_level - 1]
-        if "level_routes" not in graph_front:
-            raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
+        if graph_level > 0:
+            graph_front = graph["level_details"][graph_level - 1]
+            if "level_routes" not in graph_front:
+                raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
         third_party_scheduler_executable = ThirdPartySchedulerExecutable(task_id, self, organizeId,
                                                                          None)
         try:
             vertexes = network.get_vertexes()
-            if start_vertex not in [vertex.name for vertex in vertexes]:
+            if start_vertex not in vertexes:
                 raise Exception(
                     f"task: {graph['trace_id']}, graph error, vertex not found: {start_vertex}, graph: {graph}")
             # TODO 分布式下如何处理vertex_messages
@@ -140,7 +140,7 @@ class Graph:
                                           [TaskVertex(id="start")],
                                           [TaskVertex(network.get_vertex(start_vertex))],
                                           [],
-                                          params, ["result"], organizeId)
+                                          {param["name"]: param["value"] for param in params}, ["result"], organizeId)
             third_party_scheduler_executable.synchronize()
             return results
         except Exception as e:

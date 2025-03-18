@@ -76,7 +76,7 @@ class Network(Executable):
 
                     self.add_vertex(group.id, GroupVertex(self, group, group.params, group.results))
                     for agent in agents:
-                        self.add_vertex(agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
+                        self.add_vertex(group.id + "/" + agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
                         # self.add_route(group, group_name, agent.id, "soft")
 
             elif ".json" == group_config_path[-5:]:
@@ -89,7 +89,7 @@ class Network(Executable):
                         agent_config_path = os.path.join(agent_dir, agent_file)
                         if agent_config_path[-5:] in [".json", ".yaml"]:
                             agent = group.load_agent(agent_dir, agent_file, agent)
-                            self.add_vertex(agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
+                            self.add_vertex(group.id + "/" + agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
                             # self.add_route(group, group_name, agent.id, "soft")
                     link_file = find_config_file(link_dir, group_name + "Link")
                     link_config_path = os.path.join(link_dir, link_file)

@@ -91,7 +91,7 @@ class Client:
     def get_metadata(self, vertexes):
         metadata = [
             {
-                "name": vertex.group + "/" + vertex.id if isinstance(vertex, AgentVertex) else vertex.id,
+                "name": vertex.name,
                 "description": vertex.description,
                 "title": vertex.title,
                 "params": vertex.params,
