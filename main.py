@@ -13,8 +13,7 @@ def service():
     assert context['flowId'] is not None, "智能体流程节点未找到"
     assert context['task'] is not None, "智能体任务未找到"
     graph = Graph(logger)
-    graph.execute(network, context['flowId'], context.get("params"), context.get("results"))
-    result = graph.retrieve_results()
+    result = graph.execute(network, context['flowId'], context.get("params"), context.get("results", ["result"]))
     graph.release()
     return result
 
@@ -31,8 +30,7 @@ def service_graph():
         Exception(f"task error: {context['graph']}")
     graph = Graph(logger, context['graph']["trace_id"])
     graph.organizeId = context['organizeId']
-    graph.execute_task_call(context['taskId'], context['graph'], network, context['vertex'], context["parameterList"], context['organizeId'])
-    result = graph.retrieve_results()
+    result = graph.execute_task_call(context['taskId'], context['graph'], network, context['vertex'], context["parameterList"], context['organizeId'])
     graph.release()
     return result
 

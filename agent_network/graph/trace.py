@@ -30,9 +30,9 @@ class Trace:
         params_result = []
         results_result = []
         for param_config in params_config:
-            params_result.append(Parameter(param_config.title, param_config.name, param_config.description, ctx.retrieve(param_config.name), param_config.type))
+            params_result.append(Parameter(param_config["title"], param_config["name"], param_config["description"], ctx.retrieve(param_config["name"]), param_config["type"]))
         for result_config in results_config:
-            results_result.append(Parameter(result_config.title, result_config.name, result_config.description, ctx.retrieve(result_config.name), result_config.type))
+            results_result.append(Parameter(result_config["title"], result_config["name"], result_config["description"], ctx.retrieve(result_config["name"]), result_config["type"]))
         self.level_spans[self.level] = {vertex.name: {"messages": messages, "params": params_result, "results": results_result,
                                                "spans": [Span(vertex.name, nn.name) for nn in next_vertexes], "status": ""}}
         self.level_routes.setdefault(self.level, {})

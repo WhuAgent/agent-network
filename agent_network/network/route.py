@@ -71,6 +71,8 @@ class Route(Communicate):
         return targets
     
     def all_results_generated(self, current_context, final_results):
+        if final_results is None:
+            return True
         for item in final_results:
             if current_context.get(item) is None:
                 return False

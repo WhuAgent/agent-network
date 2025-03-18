@@ -140,7 +140,7 @@ class Graph:
                                           [TaskVertex(id="start")],
                                           [TaskVertex(network.get_vertex(start_vertex))],
                                           [],
-                                          params, organizeId)
+                                          params, ["result"], organizeId)
             third_party_scheduler_executable.synchronize()
             return results
         except Exception as e:
@@ -221,7 +221,7 @@ class Graph:
         if len(next_task_vertexes) > 0 or len(third_party_next_task_vertexes) > 0:
             self._execute_graph(task_id, network, route, task_vertexes, next_task_vertexes,
                                 third_party_next_task_vertexes)
-        return ctx.retrieves_all()
+        return ctx.retrieves(results)
 
     def register_time_cost(self, time_cost):
         self.total_time += time_cost
@@ -231,8 +231,8 @@ class Graph:
 
     def retrieve_results(self, results=None):
         if results is None:
-            return ctx.retrieve_global_all()
-        return {key: ctx.retrieve_global(key) for key in results}
+            return ctx.retrieves_all()
+        return {key: ctx.retrieve(key) for key in results}
 
     def release(self):
         total_token_num = 0
