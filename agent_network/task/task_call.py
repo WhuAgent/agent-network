@@ -1,3 +1,6 @@
+from enum import Enum
+
+
 class Parameter:
     def __init__(self, title, name, description, value, type):
         self.title = title
@@ -15,3 +18,13 @@ class Parameter:
             "type": self.type
         }
         return f"{repr_map}"
+
+
+class TaskStatus(Enum):
+    NEW = 0,
+    RUNNING = 1,
+    SUCCESS = 2,
+    FAILED = 3,
+    CANCELED = 4,
+    PAUSE = 5,
+    HUMAN_CHECK = 6,

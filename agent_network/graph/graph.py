@@ -1,6 +1,5 @@
 import uuid
 import traceback
-import json
 
 from agent_network.graph.history import History
 from agent_network.network.network import Network
@@ -8,7 +7,7 @@ from agent_network.network.route import Route
 from agent_network.graph.task_vertex import TaskVertex
 import agent_network.graph.context as ctx
 from agent_network.graph.trace import Trace
-from agent_network.task.task_call import Parameter
+from agent_network.task.task_call import Parameter, TaskStatus
 from agent_network.network.vertexes.third_party.executable import ThirdPartyExecutable, ThirdPartySchedulerExecutable
 
 
@@ -95,7 +94,7 @@ class Graph:
             self.release()
             raise Exception(e)
 
-    def execute_task_call(self, task_id, graph, network: Network, start_vertex, params: list[Parameter], organizeId):
+    def execute_task_call(self, subtask_id, task_id, graph, network: Network, start_vertex, params: list[Parameter], organizeId):
         if "trace_id" not in graph or "total_level" not in graph or "level_details" not in graph or graph[
             "total_level"] != len(graph["level_details"]):
             raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
@@ -122,7 +121,7 @@ class Graph:
             graph_front = graph["level_details"][graph_level - 1]
             if "level_routes" not in graph_front:
                 raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
-        third_party_scheduler_executable = ThirdPartySchedulerExecutable(task_id, self, organizeId,
+        third_party_scheduler_executable = ThirdPartySchedulerExecutable(subtask_id, task_id, self, organizeId,
                                                                          None)
         try:
             vertexes = network.get_vertexes()
@@ -141,11 +140,11 @@ class Graph:
                                           [TaskVertex(network.get_vertex(start_vertex))],
                                           [],
                                           {param["name"]: param["value"] for param in params}, ["result"], organizeId)
-            third_party_scheduler_executable.synchronize()
+            third_party_scheduler_executable.synchronize(TaskStatus.SUCCESS.value)
             return results
         except Exception as e:
             traceback.print_exc()
-            third_party_scheduler_executable.synchronize()
+            third_party_scheduler_executable.synchronize(TaskStatus.FAILED.value)
             self.release()
             raise Exception(e)
 

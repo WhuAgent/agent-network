@@ -27,12 +27,14 @@ def service_graph():
     assert context['parameterList'] is not None, "智能体流程参数未找到"
     assert context['organizeId'] is not None, "智能体流程组织架构参数未找到"
     assert context['taskId'] is not None, "智能体流程任务ID参数未找到"
+    assert context['subtaskId'] is not None, "智能体流程子任务ID参数未找到"
     if "trace_id" not in context['graph']:
         Exception(f"task error: {context['graph']}")
     graph_dict = json.loads(context['graph'])
     graph = Graph(logger, graph_dict["trace_id"])
     graph.organizeId = context['organizeId']
-    result = graph.execute_task_call(context['taskId'], graph_dict, network, context['vertex'], context["parameterList"], context['organizeId'])
+    graph.subtaskId = context['subtaskId']
+    result = graph.execute_task_call(context['subtaskId'], context['taskId'], graph_dict, network, context['vertex'], context["parameterList"], context['organizeId'])
     graph.release()
     return result
 

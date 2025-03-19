@@ -25,12 +25,13 @@ class ThirdPartyExecutable(Executable):
 
 # todo 从注册中心上同步这个调度服务
 class ThirdPartySchedulerExecutable(Executable):
-    def __init__(self, task_id, graph, organizeId, level_routes):
+    def __init__(self, subtask_id, task_id, graph, organizeId, level_routes):
         super().__init__(task_id, "调度服务")
         self.graph = graph
         self.level_routes = level_routes
         self.url = "http://120.27.248.186:10696/api/engine/flow"
         self.organizeId = organizeId
+        self.subtask_id = subtask_id
 
     def execute(self, **kwargs):
         data = {
@@ -48,13 +49,15 @@ class ThirdPartySchedulerExecutable(Executable):
                 f"Third party Scheduler: {self.url} is not available")
         return None, response.json()
 
-    def synchronize(self):
+    def synchronize(self, subtaskStatus):
         data = {
             "flowId": "@cn.com.thingo.intelligentAgentPlatform.taskScheduling/FLOW_SYNCHRONIZE_TASK_EXECUTION_GRAPH",
             "params": {
                 "taskId": self.id,
                 "organizeId": self.organizeId,
-                "executionGraph": repr(self.graph.trace)
+                "executionGraph": repr(self.graph.trace),
+                "subtaskId": self.subtask_id,
+                "subtaskStatus": subtaskStatus
             }
         }
         response = requests.post(self.url, json=data)
