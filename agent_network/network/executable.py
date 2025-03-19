@@ -20,8 +20,8 @@ class Executable:
 class ParameterizedExecutable(Executable):
     def __init__(self, id, description, params, results):
         super().__init__(id, description)
-        self.params = params
-        self.results = results
+        self.params = params or {}
+        self.results = results or {}
         self.description = description
 
     @abstractmethod

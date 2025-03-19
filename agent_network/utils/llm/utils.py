@@ -2,33 +2,41 @@ import os
 import yaml
 
 
-openai_config_path = os.path.join(os.getcwd(), 'config/openai.yml')
-with open(openai_config_path, "r", encoding="UTF-8") as f:
-    openai_config = yaml.safe_load(f)
+llm_config_path = os.path.join(os.getcwd(), 'config/llm.yaml')
+with open(llm_config_path, "r", encoding="UTF-8") as f:
+    llm_config = yaml.safe_load(f)
 
+
+def get_model_family(model):
+    if "openai" in model:
+        return "openai"
+    if "deepseek" in model:
+        return "deepseek"
 
 def get_api_key(**kwargs):
     if "api_key" in kwargs.keys():
-        api_key = kwargs.pop("api_key")
+        api_key = kwargs.get("api_key")
     else:
-        api_key = openai_config.get("api_key", os.getenv("OPENAI_API_KEY"))
+        model_family = get_model_family(get_model(**kwargs))
+        api_key = llm_config.get(model_family).get("api_key", os.getenv("OPENAI_API_KEY"))
     
-    return api_key, kwargs
+    return api_key
 
 
 def get_base_url(**kwargs):
     if "base_url" in kwargs.keys():
-        base_url = kwargs.pop("base_url")
+        base_url = kwargs.get("base_url")
     else:
-        base_url = openai_config.get("base_url", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1/"))
+        model_family = get_model_family(get_model(**kwargs))
+        base_url = llm_config.get(model_family).get("base_url", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1/"))
     
-    return base_url, kwargs
+    return base_url
     
 
 def get_model(**kwargs):
     if "model" in kwargs.keys():
-        model = kwargs.pop("model")
+        model = kwargs.get("model")
     else:
-        model = openai_config.get("model", os.getenv("OPENAI_MODEL"))
+        model = llm_config.get("default_model", os.getenv("OPENAI_MODEL"))
 
-    return model, kwargs
+    return model

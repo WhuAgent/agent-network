@@ -1,0 +1,11 @@
+default_model: deepseek-chat
+
+openai:
+  "api_key": "sk-uz2K0lhafPFynE77BBX5v0adDXDzxJWir05jrlPCPQoMslp9"
+  "base_url": "https://api.chatanywhere.tech/v1"
+  "defalut_model": "gpt-3.5-turbo"
+
+deepseek:
+  api_key: sk-ca3583e3026949299186dcbf3fc34f8c
+  base_url: https://api.deepseek.com
+  defalut_model: deepseek-chat

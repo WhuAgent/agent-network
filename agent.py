@@ -26,8 +26,11 @@ class worker(BaseAgent):
         response_data = response.content
         
         if "tool_name" in response_data:
-            result = {**response_data["tool_args"]}
-            return result, response_data["tool_name"]
+            result = {
+                "next_executors": [response_data["tool_name"]],
+                **response_data["tool_args"]
+                }
+            return result
         elif "result" in response_data:
             result = {
                 "result": response_data["result"]
@@ -42,9 +45,9 @@ class ocr_tool(BaseAgent):
         super().__init__(graph, config, logger)
         
     def forward(self, messages, **kwargs):
-        ocr_file_name = kwargs.get("ocr_file_name")
+        ocr_file_name = kwargs.get("ocr_file_path")
         if not ocr_file_name:
-            raise ReportError("ocr_file_name is not provided", "worker")
+            raise ReportError("ocr_file_path is not provided", "worker")
         
         import easyocr
         reader = easyocr.Reader(['ch_sim','en'])
@@ -54,4 +57,4 @@ class ocr_tool(BaseAgent):
         result = {
             "ocr_result": ocr_result
         }
-        return result, "worker"
+        return result

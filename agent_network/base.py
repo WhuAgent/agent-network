@@ -1,6 +1,6 @@
 import importlib
 import json
-from agent_network.utils.llm.openai import chat_llm
+from agent_network.utils.llm.chat import chat_llm, chat_llm_json
 from datetime import datetime
 import yaml
 from agent_network.network.executable import Executable
@@ -94,22 +94,26 @@ class BaseAgent(Executable):
     def execute(self, messages, **kwargs):
         begin_t = datetime.now().timestamp()
         # messages, results = self.forward(messages, **kwargs)
-        returns = self.forward(messages, **kwargs)
-        if len(returns) == 1:
-            results = returns
+        results = self.forward(messages, **kwargs)
+        if "next_executors" in results:
+            next_executors = results.pop("next_executors")
+        else:
             next_executors = None
-        elif len(returns) == 2:
-            results, next_executors = returns
+        # if len(returns) == 1:
+        #     results = returns
+        #     next_executors = None
+        # elif isinstance(returns, tuple) and len(returns) == 2:
+        #     results, next_executors = returns
         end_t = datetime.now().timestamp()
         self.log("network", f"AGENT {self.id} time cost: {end_t - begin_t}", self.id)
         time_cost = end_t - begin_t
         self.time_costs.append(UsageTime(begin_t, time_cost))
         return results, next_executors
     
-    def chat_llm(self, messages, **kwargs):
+    def chat_llm(self, messages, json_response=False, **kwargs):
         # todo 该时间不精准，应该取execute的开始时间
         time_chat_begin = datetime.now().timestamp()
-        assistant_message = chat_llm(messages, **kwargs)
+        assistant_message = chat_llm_json(messages, **kwargs) if json_response else chat_llm(messages, **kwargs)
         messages.append(assistant_message)
         self.log(assistant_message.role, assistant_message.content)
         # usage_token_map = {'completion_tokens': usage.completion_tokens, 'prompt_tokens': usage.prompt_tokens,
