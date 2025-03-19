@@ -2,7 +2,7 @@
   "id":"TBotGroup",
   "type":"python",
   "title":"TBot 任务助手",
-  "description":"使用 TBot 帮忙完成一些任务",
+  "description":"是 worker 和 ocr_tool 的组合",
   "prompt": "",
   "keywords": ["TBot", "任务"],
   "reference":"http://xxx/Scheduling/机器ID",

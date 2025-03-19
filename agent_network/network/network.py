@@ -17,6 +17,8 @@ import json
 import importlib
 import asyncio
 
+from agent_network.network.network_agents import AgentNetworkPlanner, AgentNetworkSummarizer
+
 
 class Network(Executable):
     def __init__(self, id, description, params, results, logger):
@@ -115,6 +117,9 @@ class Network(Executable):
             asyncio.get_event_loop().run_until_complete(client.register(self.vertexes.values()))
         self.refresh_vertexes_from_clients()
         self.load_route()
+        
+        self.load_planner()
+        self.load_summarizer()
 
     def import_group(self, group_config):
         if "load_type" in group_config and group_config["load_type"] == "module":
@@ -129,7 +134,7 @@ class Network(Executable):
         self.route = Route()
         for vertex_name, vertex_instance in self.vertexes.items():
             if not self.route.vertex_exist(vertex_name):
-                self.route.register_vertex(vertex_name, vertex_instance.description)
+                self.route.register_vertex(vertex_name, vertex_instance.description, vertex_instance.params, vertex_instance.results)
 
         for item in self.routes:
             if item["source"] == "start" or item["target"] == "end": continue
@@ -137,6 +142,87 @@ class Network(Executable):
                 item["rule"] = "soft"
             self.route.register_contact(item["source"], item["target"],
                                         item["rule"])
+            
+    def load_planner(self):
+        vertexs = []
+        for vertex_name, vertex in self.vertexes.items():
+            if isinstance(vertex, AgentVertex):
+                vertexs.append(f"{vertex_name}: {vertex.description}")
+        agents_description = "\n".join(vertexs)
+        system_prompt = f"### 角色 ###\n你是一个团队中专业的任务规划者，善于根据团队中成员的能力，将用户需求分解成子任务，按顺序分配给团队中的其他成员完成。\n\n### 团队成员 ###\n你的团队中有以下成员：\n\n{ agents_description }\n\n### 目标 ###\n给定用户需求，你需要理解用户需求，并根据团队中成员的能力，为团队成员分配任务，形成一个可以完成用户需求的工作流。\n\n### 返回方式 ###\n请以 JSON 方式返回一个子任务列表，列表中的每一项包含两个字段：\n\ntask: 任务名称；\nexecutor: 执行任务的成员；\n\n### 返回示例 ###\n[\n    {{\n        \"task\": \"...\",\n        \"executor\": \"...\",\n    }},\n    {{\n        \"...\"\n    }}\n]\n"
+        config = {
+            "id": "AgentNetworkPlanner",
+            "description": "网络规划智能体",
+            "title": "AgentNetworkPlanner",
+            "keywords": ["network", "planner"],
+            "manual": "http://wechat.com/xxxx.html",
+            "model": "deepseek-chat",
+            "params": [
+                {
+                    "name": "task",
+                    "title": "task",
+                    "type": "str",
+                    "notnull": True,
+                    "description": "用户任务需求",
+                    "defaultValue": ""
+                }
+            ],
+            "results": [
+                {
+                    "name": "sub_tasks",
+                    "title": "result",
+                    "type": "str",
+                    "notnull": True,
+                    "description": "分解成的子任务",
+                    "defaultValue": ""
+                },
+            ],
+            "prompt": system_prompt
+        }
+        network_planner_agent = AgentNetworkPlanner(self, config, self.logger)
+        network_planner_vertex = GroupVertex(self, network_planner_agent, network_planner_agent.params, network_planner_agent.results)
+        self.add_vertex(network_planner_agent.id, network_planner_vertex)
+        self.route.register_vertex(network_planner_agent.id, 
+                                   network_planner_agent.description, 
+                                   network_planner_agent.params, 
+                                   network_planner_agent.results)
+        for vertex_name in self.vertexes.keys():
+            if vertex_name != network_planner_agent.id:
+                self.route.register_contact(network_planner_agent.id, vertex_name, "soft")
+                self.route.register_contact(vertex_name, network_planner_agent.id, "soft")
+                
+    def load_summarizer(self):
+        system_prompt = "### 角色 ###\n你是一个出色的任务报告撰写者，在任务完成之后，你能准确地对任务进行总结，回应用户的需求。\n\n### 目标 ###\n给定用户任务目标和任务完成后的所有上下文信息，你需要整理并总结任务结果，并将最终结果告诉用户。\n\n### 返回方式 ###\n请以 JSON 方式返回一个字典，包括以下两个字段：\n\nagent-network-summarize-reasoning: 整理和总结时的思考。\nagent-network-final-result：最终返回给用户的结果。\n\n### 返回示例 ###\n{\n    \"agent-network-summarize-reasoning\": \"...\",\n    \"agent-network-final-result\": \"...\"\n}\n"
+        config = {
+            "id": "AgentNetworkSummarizer",
+            "description": "任务结果总结智能体",
+            "title": "AgentNetworkSummarizer",
+            "keywords": ["network", "summarizer"],
+            "manual": "http://wechat.com/xxxx.html",
+            "model": "deepseek-chat",
+            "results": [
+                {
+                    "name": "agent-network-summarize-reasoning",
+                    "title": "agent-network-summarize-reasoning",
+                    "type": "str",
+                    "notnull": True,
+                    "description": "任务总结的推理过程",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "agent-network-final-result",
+                    "title": "agent-network-final-result",
+                    "type": "str",
+                    "notnull": True,
+                    "description": "最终返回给用户的结果",
+                    "defaultValue": ""
+                },
+            ],
+            "prompt": system_prompt
+        }
+        network_summarizer_agent = AgentNetworkSummarizer(self, config, self.logger)
+        network_summarizer_vertex = GroupVertex(self, network_summarizer_agent, network_summarizer_agent.params, network_summarizer_agent.results)
+        self.add_vertex(network_summarizer_agent.id, network_summarizer_vertex)
 
     def execute(self, vertex, messages, **kwargs):
         current_ctx = ctx.retrieve_global_all()

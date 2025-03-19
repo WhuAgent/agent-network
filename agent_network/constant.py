@@ -10,7 +10,6 @@ import asyncio
 logger = Logger("log")
 network = Network('agent-network', None, None, None, logger)
 
-
 def load():
     try:
         service_configs = []
@@ -50,3 +49,16 @@ def load():
 
 
 load()
+
+
+class TaskStatus:
+    NEW_TASK = 0
+    RUNNING = 1
+    SUCCESS = 2
+    FAILED = 3
+    CANCLED = 4
+    PAUSED = 5
+    HUMAN = 6
+    
+
+DEFAULT_MODEL = "deepseek-chat"

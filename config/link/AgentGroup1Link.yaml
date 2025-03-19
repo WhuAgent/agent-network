@@ -1,8 +1,0 @@
-# group 名称
-group: "AgentGroup1"
-
-# 路由
-links:
-  - source: "start"
-    target: "Agent1"
-    type: "hard"

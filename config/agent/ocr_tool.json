@@ -1,0 +1,27 @@
+{
+  "id": "ocr_tool",
+  "description": "OCR 工具，可以提取文件中的文字",
+  "title": "ocr_tool",
+  "keywords": ["OCR", "工具"],
+  "manual": "http://wechat.com/xxxx.html",
+  "params": [
+    {
+      "name": "ocr_file_path",
+      "title": "ocr_file_path",
+      "type": "str",
+      "notnull": true,
+      "description": "OCR 文件名称",
+      "defaultValue": ""
+    }
+  ],
+  "results": [
+    {
+      "name": "ocr_result",
+      "title": "ocr_result",
+      "type": "str",
+      "notnull": true,
+      "description": "OCR 识别结果",
+      "defaultValue": ""
+    }
+  ]
+}
