@@ -37,7 +37,8 @@ def service_graph():
     graph = Graph(logger, graph_dict["trace_id"])
     graph.organizeId = context['organizeId']
     graph.subtaskId = context['subtaskId']
-    result = graph.execute_task_call(context['subtaskId'], context['taskId'], graph_dict, network, context['vertex'], context["parameterList"], context['organizeId'])
+    graph.taskId = context['taskId']
+    result = graph.execute_task_call(graph_dict, network, context['vertex'], context["parameterList"], context['organizeId'])
     graph.release()
     return result
 

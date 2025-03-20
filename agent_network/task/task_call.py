@@ -21,10 +21,10 @@ class Parameter:
 
 
 class TaskStatus(Enum):
-    NEW = 0,
-    RUNNING = 1,
-    SUCCESS = 2,
-    FAILED = 3,
-    CANCELED = 4,
-    PAUSE = 5,
-    HUMAN_CHECK = 6,
+    NEW = 0
+    RUNNING = 1
+    SUCCESS = 2
+    FAILED = 3
+    CANCELED = 4
+    PAUSE = 5
+    HUMAN_CHECK = 6

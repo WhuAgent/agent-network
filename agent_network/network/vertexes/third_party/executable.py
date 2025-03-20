@@ -57,7 +57,7 @@ class ThirdPartySchedulerExecutable(Executable):
                 "organizeId": self.organizeId,
                 "executionGraph": repr(self.graph.trace),
                 "subtaskId": self.subtask_id,
-                "subtaskStatus": subtaskStatus
+                "subtaskStatus": subtaskStatus.value
             }
         }
         response = requests.post(self.url, json=data)

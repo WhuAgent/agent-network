@@ -10,8 +10,6 @@ from agent_network.graph.trace import Trace
 from agent_network.task.task_call import Parameter, TaskStatus
 from agent_network.network.vertexes.third_party.executable import ThirdPartyExecutable, ThirdPartySchedulerExecutable
 
-from agent_network.constant import TaskStatus
-
 
 class Graph:
     def __init__(self, logger, id=None):
@@ -87,8 +85,7 @@ class Graph:
                     self.vertex_messages[vertex] = []
             if "task" not in params.keys():
                 params["task"] = task
-            return self._execute_graph(self.id,
-                                       network,
+            return self._execute_graph(network,
                                        network.route,
                                        [TaskVertex(id="start")],
                                        [TaskVertex(network.get_vertex(start_vertex))],
@@ -99,7 +96,7 @@ class Graph:
             self.release()
             raise Exception(e)
 
-    def execute_task_call(self, subtask_id, task_id, graph, network: Network, start_vertex, params: list[Parameter], organizeId):
+    def execute_task_call(self, graph, network: Network, start_vertex, params: list[Parameter], organizeId):
         if "trace_id" not in graph or "total_level" not in graph or "level_details" not in graph or graph[
             "total_level"] != len(graph["level_details"]):
             raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
@@ -126,7 +123,7 @@ class Graph:
             graph_front = graph["level_details"][graph_level - 1]
             if "level_routes" not in graph_front:
                 raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
-        third_party_scheduler_executable = ThirdPartySchedulerExecutable(subtask_id, task_id, self, organizeId,
+        third_party_scheduler_executable = ThirdPartySchedulerExecutable(self.subtaskId, self.taskId, self, organizeId,
                                                                          None)
         try:
             vertexes = network.get_vertexes()
@@ -139,22 +136,21 @@ class Graph:
                     self.vertex_messages[vertex] = [system_message]
                 else:
                     self.vertex_messages[vertex] = []
-            results = self._execute_graph(task_id, network,
+            results = self._execute_graph(network,
                                           network.route,
                                           [TaskVertex(id="start")],
                                           [TaskVertex(network.get_vertex(start_vertex))],
                                           [],
                                           {param["name"]: param["value"] for param in params}, ["result"], organizeId)
-            third_party_scheduler_executable.synchronize(TaskStatus.SUCCESS.value)
+            third_party_scheduler_executable.synchronize(TaskStatus.SUCCESS)
             return results
         except Exception as e:
             traceback.print_exc()
-            third_party_scheduler_executable.synchronize(TaskStatus.FAILED.value)
+            third_party_scheduler_executable.synchronize(TaskStatus.FAILED)
             self.release()
             raise Exception(e)
 
     def _execute_graph(self,
-                       task_id,
                        network: Network,
                        route: Route,
                        father_task_vertexes: list[TaskVertex],
@@ -175,7 +171,8 @@ class Graph:
         if params:
             ctx.registers(params)
         if len(third_party_next_task_vertexes) > 0:
-            third_party_scheduler_executable = ThirdPartySchedulerExecutable(task_id, self, organizeId,
+            third_party_scheduler_executable = ThirdPartySchedulerExecutable(self.subtaskId, self.taskId, self,
+                                                                             organizeId,
                                                                              self.trace.get_level_routes_front())
             third_party_scheduler_executable.execute()
         # TODO 由感知层根据任务激活决定触发哪些 Agent，现在默认线性执行所有 TaskNode
@@ -206,8 +203,7 @@ class Graph:
                     task_vertex.token += message.token_num
                     task_vertex.token_cost += message.token_cost
 
-                if task_vertex.id != "AgentNetworkPlanner":
-
+                if task_vertex.id != "AgentNetworkPlanner" and ctx.retrieve("step") is not None:
                     ctx.register("step", ctx.retrieve("step") + 1)
 
                 targets = next_executables if next_executables else route.search(task_vertex.id)
@@ -218,7 +214,7 @@ class Graph:
                         next_task_vertex = TaskVertex(network.get_vertex(target))
                         current_next_task_vertexes.append(next_task_vertex)
 
-                self.trace.add_spans(task_vertex.id, [nv.id for nv in current_next_task_vertexes], messages, cur_execution_result)
+                self.trace.add_spans(task_vertex.executable, [nv.executable for nv in current_next_task_vertexes], messages)
                 current_third_party_next_task_vertexes = [ns for ns in current_next_task_vertexes if
                                                           isinstance(ns.executable, ThirdPartyExecutable)]
                 current_next_task_vertexes = [ns for ns in current_next_task_vertexes if
@@ -229,9 +225,11 @@ class Graph:
                 self.release()
                 raise Exception(e)
         if len(next_task_vertexes) > 0 or len(third_party_next_task_vertexes) > 0:
-            return self._execute_graph(task_id, network, route, task_vertexes, next_task_vertexes, third_party_next_task_vertexes)
+            return self._execute_graph(network, route, task_vertexes, next_task_vertexes,
+                                       third_party_next_task_vertexes)
         else:
-            return self.summarize_result(network, route, task_vertexes, TaskVertex(network.get_vertex("AgentNetworkSummarizer")))
+            return self.summarize_result(network, route, task_vertexes,
+                                         TaskVertex(network.get_vertex("AgentNetworkSummarizer")))
 
     def summarize_result(self,
                          network: Network,

@@ -1,17 +1,17 @@
 import os
 import yaml
 
-
 llm_config_path = os.path.join(os.getcwd(), 'config/llm.yaml')
 with open(llm_config_path, "r", encoding="UTF-8") as f:
     llm_config = yaml.safe_load(f)
 
 
 def get_model_family(model):
-    if "openai" in model:
+    if "openai" in model or "gpt" in model:
         return "openai"
     if "deepseek" in model:
         return "deepseek"
+
 
 def get_api_key(**kwargs):
     if "api_key" in kwargs.keys():
@@ -19,7 +19,7 @@ def get_api_key(**kwargs):
     else:
         model_family = get_model_family(get_model(**kwargs))
         api_key = llm_config.get(model_family).get("api_key", os.getenv("OPENAI_API_KEY"))
-    
+
     return api_key
 
 
@@ -28,10 +28,11 @@ def get_base_url(**kwargs):
         base_url = kwargs.get("base_url")
     else:
         model_family = get_model_family(get_model(**kwargs))
-        base_url = llm_config.get(model_family).get("base_url", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1/"))
-    
+        base_url = llm_config.get(model_family).get("base_url",
+                                                    os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1/"))
+
     return base_url
-    
+
 
 def get_model(**kwargs):
     if "model" in kwargs.keys():

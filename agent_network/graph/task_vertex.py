@@ -1,6 +1,6 @@
 from agent_network.network.executable import Executable
 
-from agent_network.constant import TaskStatus
+from agent_network.task.task_call import TaskStatus
 
 
 class TaskVertex:
@@ -8,7 +8,7 @@ class TaskVertex:
         self.task = task
         self.executable = executable
         self.id = id if id else self.executable.name
-        self.status = TaskStatus.NEW_TASK
+        self.status = TaskStatus.NEW
         self.token = 0
         self.token_cost = 0
         self.time_cost = 0
