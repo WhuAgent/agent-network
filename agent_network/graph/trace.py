@@ -1,9 +1,11 @@
+import json
 import uuid
 from typing import Dict, List
 from agent_network.task.task_call import Parameter
 import agent_network.graph.context as ctx
+from agent_network.graph.task_vertex import TaskVertex
 from agent_network.network.vertexes.vertex import Vertex
-from agent_network.base import BaseAgent, BaseAgentGroup
+from agent_network.utils.task import get_task_type
 
 
 class Trace:
@@ -23,35 +25,37 @@ class Trace:
         self.vertexes_count += len(vertexes)
         self.vertexes.extend(vertexes)
 
-    def add_spans(self, vertex: Vertex, next_vertexes: list[Vertex], messages=None):
+    def add_spans(self, task_vertex: TaskVertex, next_task_vertexes: list[TaskVertex], messages):
+        vertex: Vertex = task_vertex.executable
+        next_vertexes: list[Vertex] = [ntv.executable for ntv in next_task_vertexes]
         params_config = vertex.params
         results_config = vertex.results
         params_result = []
         results_result = []
         for param_config in params_config:
             params_result.append(Parameter(param_config["title"], param_config["name"], param_config["description"],
-                                           ctx.retrieve(param_config["name"]), param_config["type"]))
+                                           ctx.retrieve(param_config["name"]), param_config["type"]).to_dict())
         for result_config in results_config:
             results_result.append(Parameter(result_config["title"], result_config["name"], result_config["description"],
-                                            ctx.retrieve(result_config["name"]), result_config["type"]))
+                                            ctx.retrieve(result_config["name"]), result_config["type"]).to_dict())
         self.level_spans[self.level] = {
-            vertex.name: {"messages": [repr(message) for message in messages], "params": params_result, "results": results_result,
-                          "spans": [Span(vertex.name, nn.name) for nn in next_vertexes], "status": ""}}
+            vertex.name: {"messages": [message.to_dict() for message in messages], "params": params_result,
+                          "results": results_result,
+                          "spans": [Span(vertex.name, nn.name) for nn in next_vertexes],
+                          "status": task_vertex.status.value, "token": task_vertex.token, "cost": task_vertex.token_cost,
+                          "time": task_vertex.time_cost, "task": task_vertex.task, "type": task_vertex.type}
+        }
         self.level_routes.setdefault(self.level, {})
         self.level_routes[self.level].setdefault(vertex.name, {})
-        for next_vertex in next_vertexes:
-            if isinstance(next_vertex.executable, BaseAgent):
-                type = "agent"
-            elif isinstance(next_vertex.executable, BaseAgentGroup):
-                type = "group"
-            else:
-                # todo 如何判断tbot类型
-                type = "tbot"
+        for next_task_vertex in next_task_vertexes:
+            next_vertex = next_task_vertex.executable
+            type = get_task_type(next_vertex)
             params = [Parameter(param_config.title, param_config.name, param_config.description,
-                                ctx.retrieve(param_config.name), param_config.type) for param_config in
+                                ctx.retrieve(param_config.name), param_config.type).to_dict() for param_config in
                       next_vertex.params]
             self.level_routes[self.level][vertex.name][next_vertex.name] = {
                 "type": type,
+                "task": next_task_vertex.task,
                 "params": params
             }
 
@@ -71,7 +75,7 @@ class Trace:
             "vertexes_count": self.vertexes_count,
             "level_details": level_details
         }
-        return f"{repr_map}"
+        return json.dumps(repr_map)
 
 
 class Span:
@@ -81,4 +85,4 @@ class Span:
         self.vertex = vertex
 
     def __repr__(self):
-        return f"'{self.parent_vertex} -> {self.vertex}'"
+        return f"{self.parent_vertex}->{self.vertex}"

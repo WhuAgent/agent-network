@@ -179,6 +179,15 @@ class Message:
         }
         return f"{repr_map}"
 
+    def to_dict(self):
+        repr_map = {
+            "role": self.role,
+            "content": self.content,
+            "token": self.token_num,
+            "cost": self.token_cost
+        }
+        return repr_map
+
 
 class SystemMessage(Message):
     def __init__(self, content):

@@ -9,7 +9,7 @@ class Parameter:
         self.value = value
         self.type = type
 
-    def __repr__(self):
+    def to_dict(self):
         repr_map = {
             "title": self.title,
             "name": self.name,
@@ -17,7 +17,7 @@ class Parameter:
             "value": self.value,
             "type": self.type
         }
-        return f"{repr_map}"
+        return repr_map
 
 
 class TaskStatus(Enum):
@@ -28,3 +28,5 @@ class TaskStatus(Enum):
     CANCELED = 4
     PAUSE = 5
     HUMAN_CHECK = 6
+    FINISH = 7
+    FINISH_ERROR = 8

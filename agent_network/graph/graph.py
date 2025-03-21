@@ -5,10 +5,12 @@ from agent_network.graph.history import History
 from agent_network.network.network import Network
 from agent_network.network.route import Route
 from agent_network.graph.task_vertex import TaskVertex
+from agent_network.utils.task import get_task_type
 import agent_network.graph.context as ctx
 from agent_network.graph.trace import Trace
 from agent_network.task.task_call import Parameter, TaskStatus
 from agent_network.network.vertexes.third_party.executable import ThirdPartyExecutable, ThirdPartySchedulerExecutable
+from agent_network.utils.llm.message import Message
 
 
 class Graph:
@@ -96,7 +98,7 @@ class Graph:
             self.release()
             raise Exception(e)
 
-    def execute_task_call(self, graph, network: Network, start_vertex, params: list[Parameter], organizeId):
+    def execute_task_call(self, sub_task, graph, network: Network, start_vertex, params: list[Parameter], organizeId):
         if "trace_id" not in graph or "total_level" not in graph or "level_details" not in graph or graph[
             "total_level"] != len(graph["level_details"]):
             raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
@@ -105,20 +107,35 @@ class Graph:
         for level in range(graph_level):
             level_detail = graph["level_details"][level]
             self.trace.add_vertexes(level_detail["level_vertexes"])
+            # 恢复route
+            level_route_map = {}
+            for level_route_vertex, level_target_map in level_detail["level_routes"].items():
+                level_route_vertexes = []
+                for level_target, level_target_detail in level_target_map.items():
+                    ntv = TaskVertex(network.get_vertex(level_target), level_target_detail["task"])
+                    ntv.type = level_target_detail["type"]
+                    level_route_vertexes.append(ntv)
+                level_route_map[level_route_vertex] = level_route_vertexes
             # 按照span注册上下文
-            for level_span, span_detail in level_detail["level_spans"].items():
+            for level_span_vertex, span_detail in level_detail["level_spans"].items():
                 span_params = span_detail["params"]
                 for span_param in span_params:
                     ctx.register(span_param["name"], span_param["value"])
                 span_results = span_detail["results"]
                 for span_result in span_results:
                     ctx.register(span_result["name"], span_result["value"])
-            # 恢复route
-            for level_route_vertex, level_target_map in level_detail["level_routes"].items():
-                level_route_vertexes = []
-                for level_target in level_target_map.keys():
-                    level_route_vertexes.append(network.get_vertex(level_target))
-                self.trace.add_spans(network.get_vertex(level_route_vertex), level_route_vertexes)
+                spans = span_detail["spans"]
+                messages = span_detail["messages"]
+                recovery_messages = []
+                for message in messages:
+                    recovery_message = Message(message["role"], message["content"])
+                    recovery_message.token_num = message["token"]
+                    recovery_message.token_cost = message["cost"]
+                    recovery_messages.append(recovery_message)
+                self.trace.add_spans(TaskVertex(network.get_vertex(level_span_vertex), span_detail["task"], None,
+                                                span_detail["status"], span_detail["token"], span_detail["cost"],
+                                                span_detail["time"]),
+                                     level_route_map[level_span_vertex], recovery_messages)
         if graph_level > 0:
             graph_front = graph["level_details"][graph_level - 1]
             if "level_routes" not in graph_front:
@@ -139,9 +156,10 @@ class Graph:
             results = self._execute_graph(network,
                                           network.route,
                                           [TaskVertex(id="start")],
-                                          [TaskVertex(network.get_vertex(start_vertex))],
+                                          [TaskVertex(network.get_vertex(start_vertex), sub_task)],
                                           [],
-                                          {param["name"]: param["value"] for param in params}, ["result"], organizeId)
+                                          {param["name"]: param["value"] for param in params}, ["result"],
+                                          organizeId, start_vertex == "AgentNetworkSummarizer")
             third_party_scheduler_executable.synchronize(TaskStatus.SUCCESS)
             return results
         except Exception as e:
@@ -158,7 +176,8 @@ class Graph:
                        third_party_next_task_vertexes: list[TaskVertex] = [],
                        params=None,
                        results=["result"],
-                       organizeId=None):
+                       organizeId=None,
+                       need_summary=True):
         if task_vertexes is None or len(task_vertexes) == 0:
             return
         self.trace.add_vertexes([n.id for n in task_vertexes])
@@ -211,10 +230,12 @@ class Graph:
                 for target in targets:
                     route.forward_message(task_vertex.id, target)
                     if target != "COMPLETE":
-                        next_task_vertex = TaskVertex(network.get_vertex(target))
+                        vertex = network.get_vertex(target)
+                        next_task_vertex = TaskVertex(vertex)
+                        next_task_vertex.type = get_task_type(vertex)
                         current_next_task_vertexes.append(next_task_vertex)
 
-                self.trace.add_spans(task_vertex.executable, [nv.executable for nv in current_next_task_vertexes], messages)
+                self.trace.add_spans(task_vertex, current_next_task_vertexes, messages)
                 current_third_party_next_task_vertexes = [ns for ns in current_next_task_vertexes if
                                                           isinstance(ns.executable, ThirdPartyExecutable)]
                 current_next_task_vertexes = [ns for ns in current_next_task_vertexes if
@@ -227,9 +248,12 @@ class Graph:
         if len(next_task_vertexes) > 0 or len(third_party_next_task_vertexes) > 0:
             return self._execute_graph(network, route, task_vertexes, next_task_vertexes,
                                        third_party_next_task_vertexes)
-        else:
+        elif need_summary:
             return self.summarize_result(network, route, task_vertexes,
-                                         TaskVertex(network.get_vertex("AgentNetworkSummarizer")))
+                                         TaskVertex(network.get_vertex("AgentNetworkSummarizer"),
+                                                    "summarize the total progress of the execution graph"))
+        else:
+            return ctx.retrieves_all()
 
     def summarize_result(self,
                          network: Network,

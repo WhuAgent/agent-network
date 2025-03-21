@@ -1,17 +1,19 @@
 from agent_network.network.executable import Executable
-
+from agent_network.utils.task import get_task_type
 from agent_network.task.task_call import TaskStatus
 
 
 class TaskVertex:
-    def __init__(self, executable: Executable=None, task=None, id=None):
+    def __init__(self, executable: Executable = None, task=None, id=None, status=TaskStatus.NEW, token=0, token_cost=0,
+                 time_cost=0, type=None):
         self.task = task
         self.executable = executable
         self.id = id if id else self.executable.name
-        self.status = TaskStatus.NEW
-        self.token = 0
-        self.token_cost = 0
-        self.time_cost = 0
+        self.status = status
+        self.token = token
+        self.token_cost = token_cost
+        self.time_cost = time_cost
+        self.type = type if type is not None else get_task_type(executable)
 
     def get_task(self):
         return self.task
@@ -30,3 +32,6 @@ class TaskVertex:
 
     def get_time_cost(self):
         return self.time_cost
+
+    def get_type(self):
+        return self.type
