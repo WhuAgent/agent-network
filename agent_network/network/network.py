@@ -223,6 +223,10 @@ class Network(Executable):
         network_summarizer_agent = AgentNetworkSummarizer(self, config, self.logger)
         network_summarizer_vertex = GroupVertex(self, network_summarizer_agent, network_summarizer_agent.params, network_summarizer_agent.results)
         self.add_vertex(network_summarizer_agent.id, network_summarizer_vertex)
+        self.route.register_vertex(network_summarizer_agent.id,
+                                   network_summarizer_agent.description,
+                                   network_summarizer_agent.params,
+                                   network_summarizer_agent.results)
 
     def execute(self, vertex, messages, **kwargs):
         current_ctx = ctx.retrieve_global_all()
