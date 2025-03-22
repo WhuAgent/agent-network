@@ -66,5 +66,23 @@ class ThirdPartySchedulerExecutable(Executable):
                 f"Third party Scheduler synchronize failed: {self.url}")
         return None, response.json()
 
+    def summary(self, agent_network_summarize_reasoning, agent_network_final_result):
+        data = {
+            "flowId": "@cn.com.thingo.intelligentAgentPlatform.taskScheduling/FLOW_SUMMARY_OF_RECEIVING_TASKS",
+            "params": {
+                "taskId": self.id,
+                "subtaskId": self.subtask_id,
+                "taskSummary": {
+                    "agentNetworkSummarizeReasoning": agent_network_summarize_reasoning,
+                    "agentNetworkFinalResult": agent_network_final_result
+                },
+            }
+        }
+        response = requests.post(self.url, json=data)
+        if response.status_code != 200:
+            raise Exception(
+                f"Third party Scheduler summary failed: {self.url}")
+        return None, response.json()
+
     def release(self):
         pass

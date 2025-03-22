@@ -52,8 +52,7 @@ class Client:
     def register_vertexes(self, vertexes_configs: list[VertexConfig]):
         third_party_vertexes = [ThirdPartyVertex(self.network,
                                                  ThirdPartyExecutable(
-                                                     vertex_config.name, vertex_config.task,
-                                                     vertex_config.description, vertex_config.service_group,
+                                                     vertex_config.name, vertex_config.description, vertex_config.service_group,
                                                      vertex_config.service_name, vertex_config.ip, vertex_config.port
                                                  ),
                                                  vertex_config.params, vertex_config.results)

@@ -42,7 +42,7 @@ class Trace:
             vertex.name: {"messages": [message.to_dict() for message in messages], "params": params_result,
                           "results": results_result,
                           "spans": [Span(vertex.name, nn.name) for nn in next_vertexes],
-                          "status": task_vertex.status.value, "token": task_vertex.token, "cost": task_vertex.token_cost,
+                          "status": task_vertex.status, "token": task_vertex.token, "cost": task_vertex.token_cost,
                           "time": task_vertex.time_cost, "task": task_vertex.task, "type": task_vertex.type}
         }
         self.level_routes.setdefault(self.level, {})

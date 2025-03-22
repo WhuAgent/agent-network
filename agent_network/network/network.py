@@ -151,7 +151,7 @@ class Network(Executable):
         agents_description = "\n".join(vertexs)
         system_prompt = f"### 角色 ###\n你是一个团队中专业的任务规划者，善于根据团队中成员的能力，将用户需求分解成子任务，按顺序分配给团队中的其他成员完成。\n\n### 团队成员 ###\n你的团队中有以下成员：\n\n{ agents_description }\n\n### 目标 ###\n给定用户需求，你需要理解用户需求，并根据团队中成员的能力，为团队成员分配任务，形成一个可以完成用户需求的工作流。\n\n### 返回方式 ###\n请以 JSON 方式返回一个子任务列表，列表中的每一项包含两个字段：\n\ntask: 任务名称；\nexecutor: 执行任务的成员；\n\n### 返回示例 ###\n[\n    {{\n        \"task\": \"...\",\n        \"executor\": \"...\",\n    }},\n    {{\n        \"...\"\n    }}\n]\n"
         config = {
-            "id": "AgentNetworkPlanner",
+            "id": "AgentNetworkPlannerGroup/AgentNetworkPlanner",
             "description": "网络规划智能体",
             "title": "AgentNetworkPlanner",
             "keywords": ["network", "planner"],
@@ -192,9 +192,9 @@ class Network(Executable):
                 self.route.register_contact(vertex_name, network_planner_agent.id, "soft")
                 
     def load_summarizer(self):
-        system_prompt = "### 角色 ###\n你是一个出色的任务报告撰写者，在任务完成之后，你能准确地对任务进行总结，回应用户的需求。\n\n### 目标 ###\n给定用户任务目标和任务完成后的所有上下文信息，你需要整理并总结任务结果，并将最终结果告诉用户。\n\n### 返回方式 ###\n请以 JSON 方式返回一个字典，包括以下两个字段：\n\nagent-network-summarize-reasoning: 整理和总结时的思考。\nagent-network-final-result：最终返回给用户的结果。\n\n### 返回示例 ###\n{\n    \"agent-network-summarize-reasoning\": \"...\",\n    \"agent-network-final-result\": \"...\"\n}\n"
+        system_prompt = "### 角色 ###\n你是一个出色的任务报告撰写者，在任务完成之后，你能准确地对任务进行总结，回应用户的需求。\n\n### 目标 ###\n给定用户任务目标和任务完成后的所有上下文信息，你需要整理并总结任务结果，并将最终结果告诉用户。\n\n### 返回方式 ###\n请以 JSON 方式返回一个字典，包括以下两个字段：\n\nagent_network_summarize_reasoning: 整理和总结时的思考。\nagent_network_final_result：最终返回给用户的结果。\n\n### 返回示例 ###\n{\n    \"agent_network_summarize_reasoning\": \"...\",\n    \"agent_network_final_result\": \"...\"\n}\n"
         config = {
-            "id": "AgentNetworkSummarizer",
+            "id": "AgentNetworkSummarizerGroup/AgentNetworkSummarizer",
             "description": "任务结果总结智能体",
             "title": "AgentNetworkSummarizer",
             "keywords": ["network", "summarizer"],
@@ -202,16 +202,16 @@ class Network(Executable):
             "model": "deepseek-chat",
             "results": [
                 {
-                    "name": "agent-network-summarize-reasoning",
-                    "title": "agent-network-summarize-reasoning",
+                    "name": "agent_network_summarize_reasoning",
+                    "title": "agent_network_summarize_reasoning",
                     "type": "str",
                     "notnull": True,
                     "description": "任务总结的推理过程",
                     "defaultValue": ""
                 },
                 {
-                    "name": "agent-network-final-result",
-                    "title": "agent-network-final-result",
+                    "name": "agent_network_final_result",
+                    "title": "agent_network_final_result",
                     "type": "str",
                     "notnull": True,
                     "description": "最终返回给用户的结果",
@@ -264,51 +264,52 @@ class Network(Executable):
                 self.current_groups_name.remove(name)
                 # 若强绑定group和agent的生命周期
                 # 拿曾经拥有过的agent的所有统计数据，输出该group最终的
-                for agent_name in vertex.executable.agents.keys():
-                    agent_vertex = self.get_vertex(agent_name)
-                    agent_usages_token = None
-                    agent_usages_time = None
-                    if agent_vertex is not None:
-                        agent_usages_token, agent_usages_time = self.get_vertex(agent_name).release()
-                        if agent_name in vertex.executable.current_agents_name:
-                            vertex.executable.remove_agent(agent_name)
-                            usage_token_total_map, total_time = usage_calculate_all(agent_usages_token,
-                                                                                    agent_usages_time)
-                            self.usage_token_total_map["completion_tokens"] += usage_token_total_map[
-                                "completion_tokens"]
-                            self.usage_token_total_map["prompt_tokens"] += usage_token_total_map["prompt_tokens"]
-                            self.usage_token_total_map["total_tokens"] += usage_token_total_map["total_tokens"]
-                            self.usage_token_total_map["completion_cost"] += usage_token_total_map["completion_cost"]
-                            self.usage_token_total_map["prompt_cost"] += usage_token_total_map["prompt_cost"]
-                            self.usage_token_total_map["total_cost"] += usage_token_total_map["total_cost"]
-                            self.total_time += total_time
-                            self.agents_usages_time_history[agent_name] = agent_usages_time
-                            self.agents_usages_token_history[agent_name] = agent_usages_token
-                            self.logger.log("Agent-Network-Graph",
-                                            f"AGENT: {agent_name} TOKEN TOTAL: {usage_token_total_map}", self.name)
-                            self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} TIME COST TOTAL: {total_time}",
-                                            self.name)
-                            self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} has been removed", self.name)
-                            self.remove_common(agent_name)
-                            removed_vertexes.append(agent_name)
-                    else:
-                        if agent_name in self.agents_usages_time_history and agent_name in self.agents_usages_token_history:
-                            agent_usages_token = self.agents_usages_token_history[agent_name]
-                            agent_usages_time = self.agents_usages_time_history[agent_name]
-                    if agent_usages_token is not None and agent_usages_time is not None:
-                        for group_agent in vertex.executable.agents[agent_name]:
-                            if group_agent.end_timestamp == group_agent.begin_timestamp:
-                                group_agent.separate()
-                            agent_total_usage, agent_total_time = usage_calculate(agent_usages_token, agent_usages_time,
-                                                                                  group_agent.begin_timestamp,
-                                                                                  group_agent.end_timestamp)
-                            total_usage['completion_tokens'] += agent_total_usage['completion_tokens']
-                            total_usage['prompt_tokens'] += agent_total_usage['prompt_tokens']
-                            total_usage['total_tokens'] += agent_total_usage['total_tokens']
-                            total_usage['completion_cost'] += agent_total_usage['completion_cost']
-                            total_usage['prompt_cost'] += agent_total_usage['prompt_cost']
-                            total_usage['total_cost'] += agent_total_usage['total_cost']
-                            total_time += agent_total_time
+                if hasattr(vertex.executable, 'agents') and vertex.executable.agents:
+                    for agent_name in vertex.executable.agents.keys():
+                        agent_vertex = self.get_vertex(agent_name)
+                        agent_usages_token = None
+                        agent_usages_time = None
+                        if agent_vertex is not None:
+                            agent_usages_token, agent_usages_time = self.get_vertex(agent_name).release()
+                            if agent_name in vertex.executable.current_agents_name:
+                                vertex.executable.remove_agent(agent_name)
+                                usage_token_total_map, total_time = usage_calculate_all(agent_usages_token,
+                                                                                        agent_usages_time)
+                                self.usage_token_total_map["completion_tokens"] += usage_token_total_map[
+                                    "completion_tokens"]
+                                self.usage_token_total_map["prompt_tokens"] += usage_token_total_map["prompt_tokens"]
+                                self.usage_token_total_map["total_tokens"] += usage_token_total_map["total_tokens"]
+                                self.usage_token_total_map["completion_cost"] += usage_token_total_map["completion_cost"]
+                                self.usage_token_total_map["prompt_cost"] += usage_token_total_map["prompt_cost"]
+                                self.usage_token_total_map["total_cost"] += usage_token_total_map["total_cost"]
+                                self.total_time += total_time
+                                self.agents_usages_time_history[agent_name] = agent_usages_time
+                                self.agents_usages_token_history[agent_name] = agent_usages_token
+                                self.logger.log("Agent-Network-Graph",
+                                                f"AGENT: {agent_name} TOKEN TOTAL: {usage_token_total_map}", self.name)
+                                self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} TIME COST TOTAL: {total_time}",
+                                                self.name)
+                                self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} has been removed", self.name)
+                                self.remove_common(agent_name)
+                                removed_vertexes.append(agent_name)
+                        else:
+                            if agent_name in self.agents_usages_time_history and agent_name in self.agents_usages_token_history:
+                                agent_usages_token = self.agents_usages_token_history[agent_name]
+                                agent_usages_time = self.agents_usages_time_history[agent_name]
+                        if agent_usages_token is not None and agent_usages_time is not None:
+                            for group_agent in vertex.executable.agents[agent_name]:
+                                if group_agent.end_timestamp == group_agent.begin_timestamp:
+                                    group_agent.separate()
+                                agent_total_usage, agent_total_time = usage_calculate(agent_usages_token, agent_usages_time,
+                                                                                      group_agent.begin_timestamp,
+                                                                                      group_agent.end_timestamp)
+                                total_usage['completion_tokens'] += agent_total_usage['completion_tokens']
+                                total_usage['prompt_tokens'] += agent_total_usage['prompt_tokens']
+                                total_usage['total_tokens'] += agent_total_usage['total_tokens']
+                                total_usage['completion_cost'] += agent_total_usage['completion_cost']
+                                total_usage['prompt_cost'] += agent_total_usage['prompt_cost']
+                                total_usage['total_cost'] += agent_total_usage['total_cost']
+                                total_time += agent_total_time
                 self.logger.log("Agent-Network-Graph", f"GROUP: {name} TOKEN TOTAL: {total_usage}", self.name)
                 self.logger.log("Agent-Network-Graph", f"GROUP: {name} TIME COST TOTAL: {total_time}", self.name)
                 self.logger.log("Agent-Network-Graph", f"GROUP: {name} has been removed from graph {self.name}",

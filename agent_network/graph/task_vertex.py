@@ -4,7 +4,7 @@ from agent_network.task.task_call import TaskStatus
 
 
 class TaskVertex:
-    def __init__(self, executable: Executable = None, task=None, id=None, status=TaskStatus.NEW, token=0, token_cost=0,
+    def __init__(self, executable: Executable = None, task=None, id=None, status=TaskStatus.NEW.value, token=0, token_cost=0,
                  time_cost=0, type=None):
         self.task = task
         self.executable = executable

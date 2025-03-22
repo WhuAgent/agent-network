@@ -11,10 +11,11 @@ from agent_network.graph.trace import Trace
 from agent_network.task.task_call import Parameter, TaskStatus
 from agent_network.network.vertexes.third_party.executable import ThirdPartyExecutable, ThirdPartySchedulerExecutable
 from agent_network.utils.llm.message import Message
+from agent_network.utils.logger import Logger
 
 
 class Graph:
-    def __init__(self, logger, id=None):
+    def __init__(self, logger=Logger("log"), id=None):
         self.logger = logger
         self.vertexes = []
         self.step = 0
@@ -159,12 +160,86 @@ class Graph:
                                           [TaskVertex(network.get_vertex(start_vertex), sub_task)],
                                           [],
                                           {param["name"]: param["value"] for param in params}, ["result"],
-                                          organizeId, start_vertex == "AgentNetworkSummarizer")
+                                          organizeId, start_vertex == "AgentNetworkSummarizerGroup/AgentNetworkSummarizer")
             third_party_scheduler_executable.synchronize(TaskStatus.SUCCESS)
             return results
         except Exception as e:
             traceback.print_exc()
             third_party_scheduler_executable.synchronize(TaskStatus.FAILED)
+            self.release()
+            raise Exception(e)
+
+    def execute_task_summary(self, sub_task, graph, network: Network, start_vertex, params: list[Parameter],
+                             organizeId):
+        if "trace_id" not in graph or "total_level" not in graph or "level_details" not in graph or graph[
+            "total_level"] != len(graph["level_details"]):
+            raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
+        graph_level = graph["total_level"]
+        # 按照执行图回放
+        for level in range(graph_level):
+            level_detail = graph["level_details"][level]
+            self.trace.add_vertexes(level_detail["level_vertexes"])
+            # 恢复route
+            level_route_map = {}
+            for level_route_vertex, level_target_map in level_detail["level_routes"].items():
+                level_route_vertexes = []
+                for level_target, level_target_detail in level_target_map.items():
+                    ntv = TaskVertex(network.get_vertex(level_target), level_target_detail["task"])
+                    ntv.type = level_target_detail["type"]
+                    level_route_vertexes.append(ntv)
+                level_route_map[level_route_vertex] = level_route_vertexes
+            # 按照span注册上下文
+            for level_span_vertex, span_detail in level_detail["level_spans"].items():
+                span_params = span_detail["params"]
+                for span_param in span_params:
+                    ctx.register(span_param["name"], span_param["value"])
+                span_results = span_detail["results"]
+                for span_result in span_results:
+                    ctx.register(span_result["name"], span_result["value"])
+                spans = span_detail["spans"]
+                messages = span_detail["messages"]
+                recovery_messages = []
+                for message in messages:
+                    recovery_message = Message(message["role"], message["content"])
+                    recovery_message.token_num = message["token"]
+                    recovery_message.token_cost = message["cost"]
+                    recovery_messages.append(recovery_message)
+                self.trace.add_spans(TaskVertex(network.get_vertex(level_span_vertex), span_detail["task"], None,
+                                                span_detail["status"], span_detail["token"], span_detail["cost"],
+                                                span_detail["time"]),
+                                     level_route_map[level_span_vertex], recovery_messages)
+        if graph_level > 0:
+            graph_front = graph["level_details"][graph_level - 1]
+            if "level_routes" not in graph_front:
+                raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
+        try:
+            vertexes = network.get_vertexes()
+            if start_vertex not in vertexes:
+                raise Exception(
+                    f"task: {graph['trace_id']}, graph error, vertex not found: {start_vertex}, graph: {graph}")
+            for vertex in vertexes:
+                if system_message := network.get_vertex(vertex).get_system_message():
+                    self.vertex_messages[vertex] = [system_message]
+                else:
+                    self.vertex_messages[vertex] = []
+            # results = self._execute_graph(network,
+            #                               network.route,
+            #                               [TaskVertex(id="start")],
+            #                               [TaskVertex(network.get_vertex(start_vertex), sub_task)],
+            #                               [],
+            #                               {param["name"]: param["value"] for param in params}, ["result"],
+            #                               organizeId, False)
+            ctx.register("executionGraph", graph)
+            ctx.register("task", sub_task)
+            results = self.summarize_result(network, network.route, [TaskVertex(id="start")],
+                                         TaskVertex(network.get_vertex("AgentNetworkSummarizerGroup/AgentNetworkSummarizer"),
+                                                    f"summarize the total progress of the execution graph of the task: {sub_task}"))
+            third_party_scheduler_executable = ThirdPartySchedulerExecutable(self.subtaskId, self.taskId, self, organizeId,
+                                                                             None)
+            third_party_scheduler_executable.summary(results.get('agent_network_summarize_reasoning'), results.get('agent_network_final_result'))
+            return results
+        except Exception as e:
+            traceback.print_exc()
             self.release()
             raise Exception(e)
 
@@ -208,7 +283,7 @@ class Graph:
                 self.cur_execution = self.execution_history[-1]
 
                 # 更新 task_vertex 状态（开始运行）
-                task_vertex.set_status(TaskStatus.RUNNING)
+                task_vertex.set_status(TaskStatus.RUNNING.value)
 
                 cur_execution_result, next_executables = network.execute(task_vertex.id, messages)
 
@@ -216,7 +291,7 @@ class Graph:
                 self.cur_execution.next_executors = next_executables
 
                 # 更新 task_vertex 状态（成功运行收集结果）
-                task_vertex.set_status(TaskStatus.SUCCESS)
+                task_vertex.set_status(TaskStatus.SUCCESS.value)
                 task_vertex.time_cost = self.cur_execution.time_cost
                 for message in self.cur_execution.llm_messages:
                     task_vertex.token += message.token_num
@@ -250,7 +325,7 @@ class Graph:
                                        third_party_next_task_vertexes)
         elif need_summary:
             return self.summarize_result(network, route, task_vertexes,
-                                         TaskVertex(network.get_vertex("AgentNetworkSummarizer"),
+                                         TaskVertex(network.get_vertex("AgentNetworkSummarizerGroup/AgentNetworkSummarizer"),
                                                     "summarize the total progress of the execution graph"))
         else:
             return ctx.retrieves_all()
@@ -275,7 +350,7 @@ class Graph:
         self.cur_execution = self.execution_history[-1]
 
         # 更新 task_vertex 状态（开始运行）
-        task_vertex.set_status(TaskStatus.RUNNING)
+        task_vertex.set_status(TaskStatus.RUNNING.value)
 
         cur_execution_result, next_executables = network.execute(task_vertex.id, messages, **valuable_context)
 
@@ -283,7 +358,7 @@ class Graph:
         self.cur_execution.next_executors = next_executables
 
         # 更新 task_vertex 状态（成功运行收集结果）
-        task_vertex.set_status(TaskStatus.SUCCESS)
+        task_vertex.set_status(TaskStatus.SUCCESS.value)
         task_vertex.time_cost = self.cur_execution.time_cost
         for message in self.cur_execution.llm_messages:
             task_vertex.token += message.token_num

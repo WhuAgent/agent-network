@@ -40,8 +40,9 @@ class AgentNetworkSummarizer(BaseAgent):
         
     def forward(self, messages, **kwargs):
         task = kwargs.pop("task")
+        execution_graph = kwargs.get("executionGraph")
         
-        prompt = f"现在用户的任务是：\n{task}\n\n在智能体网络完成任务的过程中，产生了如下上下文信息：\n{kwargs}\n\n请对该任务的执行结果进行总结。"
+        prompt = f"现在用户的任务是：\n{task}\n\n在智能体网络完成任务的过程中，产生了如下全过程执行图\n{execution_graph}，产生了如下上下文信息：\n{kwargs}\n\n请对该任务的执行结果进行总结。"
         
         self.add_message("user", prompt, messages)
         
