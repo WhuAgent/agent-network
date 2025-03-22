@@ -322,7 +322,8 @@ class Network(Executable):
             elif isinstance(vertex, AgentVertex):
                 for group in self.current_groups_name:
                     group_vertex = self.get_vertex(group)
-                    group_vertex.executable.remove_agent_if_exist(name)
+                    if isinstance(group_vertex.executable, BaseAgentGroup):
+                        group_vertex.executable.remove_agent_if_exist(name)
                 agent_usages_token, agent_usages_time = vertex.release()
                 self.agents_usages_time_history[name] = agent_usages_time
                 self.agents_usages_token_history[name] = agent_usages_token
