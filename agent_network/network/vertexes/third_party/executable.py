@@ -31,7 +31,7 @@ class ThirdPartySchedulerExecutable(Executable):
         super().__init__(task_id, "调度服务")
         self.graph = graph
         self.level_routes = level_routes
-        self.url = "http://localhost:10696/api/engine/flow"
+        self.url = "http://120.27.248.186:10696/api/engine/flow"
         self.organizeId = organizeId
         self.subtask_id = subtask_id
 
