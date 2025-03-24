@@ -53,6 +53,13 @@ def registers(params_map):
         register(key, value)
 
 
+def registers_params(params_list):
+    if params_list is None:
+        return
+    for param in params_list:
+        register(param['name'], param['value'])
+
+
 def retrieve(key):
     init()
     return thread_local_data.context.get(key)
@@ -122,7 +129,7 @@ def register_llm_action(messages: list[Message]):
 
     for i in range(len(graph.vertex_messages[vertex]), len(messages)):
         graph.vertex_messages[vertex].append(messages[i])
-    
+
     for i in range(graph.message_num, len(messages)):
         graph.cur_execution.llm_messages.append(messages[i])
         graph.message_num += 1

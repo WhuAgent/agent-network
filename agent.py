@@ -3,8 +3,8 @@ from agent_network.exceptions import ReportError
 
 
 class worker(BaseAgent):
-    def __init__(self, graph, config, logger):
-        super().__init__(graph, config, logger)
+    def __init__(self, network, config, logger):
+        super().__init__(network, config, logger)
         
     def forward(self, messages, **kwargs):
         if error_message := kwargs.get("graph_error_message"):
@@ -41,8 +41,8 @@ class worker(BaseAgent):
     
 
 class ocr_tool(BaseAgent):
-    def __init__(self, graph, config, logger):
-        super().__init__(graph, config, logger)
+    def __init__(self, network, config, logger):
+        super().__init__(network, config, logger)
         
     def forward(self, messages, **kwargs):
         ocr_file_name = kwargs.get("ocr_file_path")

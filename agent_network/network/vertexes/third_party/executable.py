@@ -3,10 +3,12 @@ import requests
 
 
 class ThirdPartyExecutable(Executable):
-    def __init__(self, id, description, service_group, service_name, ip, port):
+    def __init__(self, id, title, description, service_group, service_name, ip, port):
         super().__init__(id, description)
+        self.name = id
         self.service_group = service_group
         self.service_name = service_name
+        self.title = title
         self.ip = ip
         self.port = port
 
@@ -29,7 +31,7 @@ class ThirdPartySchedulerExecutable(Executable):
         super().__init__(task_id, "调度服务")
         self.graph = graph
         self.level_routes = level_routes
-        self.url = "http://120.27.248.186:10696/api/engine/flow"
+        self.url = "http://localhost:10696/api/engine/flow"
         self.organizeId = organizeId
         self.subtask_id = subtask_id
 
@@ -40,7 +42,7 @@ class ThirdPartySchedulerExecutable(Executable):
                 "taskId": self.id,
                 "levelRoutes": self.level_routes,
                 "organizeId": self.organizeId,
-                "executionGraph": self.graph.trace
+                "executionGraph": repr(self.graph.trace)
             }
         }
         response = requests.post(self.url, json=data)

@@ -81,6 +81,20 @@ class Route(Communicate):
 
         return target
 
+    def forward_start(self, target):
+        current_context = ctx.retrieves_all()
+        current_step = ctx.retrieve("step")
+        ignored_context = ["$$$$$Graph$$$$$", "$$$$$GraphID$$$$$", "sub_tasks", "step"]
+        valuable_context = {}
+        for key, value in current_context.items():
+            if key not in ignored_context:
+                valuable_context[key] = value
+
+        related_context = self.get_related_context("start", target, valuable_context, current_step)
+        if len(related_context) != len(self.vertex_params[target]):
+            matched_context = self.match_context(valuable_context, target)
+            ctx.registers(matched_context)
+
     def get_related_context(self, source, target, current_context, current_step):
         related_context = {}
         for param in self.vertex_params[target]:

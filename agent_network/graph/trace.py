@@ -18,6 +18,14 @@ class Trace:
         self.level_routes: Dict[int, Dict[str, Dict]] = {}
         self.vertexes = []
         self.vertexes_count = 0
+        self.planningResult = None
+
+    def set_subtasks(self, subtasks, step):
+        if subtasks is not None:
+            self.planningResult = {
+                "subtasks": subtasks,
+                "step": step
+            }
 
     def add_vertexes(self, vertexes):
         self.level += 1
@@ -41,7 +49,7 @@ class Trace:
         self.level_spans[self.level] = {
             vertex.name: {"messages": [message.to_dict() for message in messages], "params": params_result,
                           "results": results_result,
-                          "spans": [Span(vertex.name, nn.name) for nn in next_vertexes],
+                          "spans": [repr(Span(vertex.name, nn.name)) for nn in next_vertexes],
                           "status": task_vertex.status, "token": task_vertex.token, "cost": task_vertex.token_cost,
                           "time": task_vertex.time_cost, "task": task_vertex.task, "type": task_vertex.type}
         }
@@ -50,8 +58,8 @@ class Trace:
         for next_task_vertex in next_task_vertexes:
             next_vertex = next_task_vertex.executable
             type = get_task_type(next_vertex)
-            params = [Parameter(param_config.title, param_config.name, param_config.description,
-                                ctx.retrieve(param_config.name), param_config.type).to_dict() for param_config in
+            params = [Parameter(param_config["title"], param_config["name"], param_config["description"],
+                                ctx.retrieve(param_config["name"]), param_config["type"]).to_dict() for param_config in
                       next_vertex.params]
             self.level_routes[self.level][vertex.name][next_vertex.name] = {
                 "type": type,
@@ -65,15 +73,16 @@ class Trace:
     def __repr__(self):
         level_details = [
             {"level": i + 1, "level_vertexes": self.level_vertexes[i + 1] if i + 1 in self.level_vertexes else [],
-             "level_spans": self.level_spans[i + 1] if i + 1 in self.level_spans else {},
-             "level_routes": self.level_routes[i + 1] if i + 1 in self.level_spans else {}}
-            for i in range(self.level)]
+             "level_spans": self.level_spans[i + 1],
+             "level_routes": self.level_routes[i + 1]}
+            for i in range(self.level) if i + 1 in self.level_spans and i + 1 in self.level_routes]
         repr_map = {
             "trace_id": self.id,
-            "total_level": self.level,
+            "total_level": len(level_details),
             "participated_vertexes": list(set(self.vertexes)),
             "vertexes_count": self.vertexes_count,
-            "level_details": level_details
+            "level_details": level_details,
+            "planning_result": self.planningResult
         }
         return json.dumps(repr_map)
 

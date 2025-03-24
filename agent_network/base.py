@@ -16,10 +16,10 @@ from agent_network.utils.llm.message import SystemMessage, UserMessage, Assistan
 
 class BaseAgent(Executable):
 
-    def __init__(self, graph, config, logger):
+    def __init__(self, network, config, logger):
         super().__init__(config["id"], config["description"])
         self.config = config
-        self.graph = graph
+        self.network = network
         self.title = self.config["title"] if "title" in self.config else self.id
         self.name = self.config["name"] if "name" in self.config else self.id
         self.description = self.config["description"]
@@ -175,11 +175,11 @@ class BaseAgent(Executable):
 
 
 class BaseAgentGroup(Executable):
-    def __init__(self, graph, route, config, logger):
+    def __init__(self, network, route, config, logger):
         super().__init__(config["id"], config["description"])
         self.config = config
         self.logger = logger
-        self.graph = graph
+        self.network = network
         self.route = route
         self.title = config["title"]
         self.name = config["name"]
@@ -200,7 +200,7 @@ class BaseAgentGroup(Executable):
     def load_agents(self, agent_dir, file_suffix=".yaml") -> list[BaseAgent]:
         agents = []
         for agent_name in self.config["agents"]:
-            exist_agent_vertex = self.graph.get_vertex(agent_name)
+            exist_agent_vertex = self.network.get_vertex(agent_name)
             if exist_agent_vertex is not None:
                 agent = exist_agent_vertex.executable
             else:
@@ -214,7 +214,7 @@ class BaseAgentGroup(Executable):
         return agents
 
     def load_agent(self, agent_dir, agent_file, agent_name) -> BaseAgent:
-        exist_agent_vertex = self.graph.get_vertex(agent_name)
+        exist_agent_vertex = self.network.get_vertex(agent_name)
         if exist_agent_vertex is not None:
             agent = exist_agent_vertex.executable
         else:
@@ -222,7 +222,7 @@ class BaseAgentGroup(Executable):
                 agent_config = json.load(f) if agent_file.endswith(".json") else yaml.safe_load(f)
                 agent_module = importlib.import_module("agent")
                 agent_class = getattr(agent_module, agent_name)
-                agent = agent_class(self.graph, agent_config, self.logger)
+                agent = agent_class(self.network, agent_config, self.logger)
                 self.agents.setdefault(agent_name, [])
                 self.agents[agent_name].append(GroupAgent(datetime.now().timestamp(), agent_name))
                 self.current_agents_name.append(agent_name)
@@ -231,7 +231,7 @@ class BaseAgentGroup(Executable):
     def import_agent(self, agent_config):
         agent_module = importlib.import_module("agent")
         agent_class = getattr(agent_module, agent_config["id"])
-        agent = agent_class(self.graph, agent_config, self.logger)
+        agent = agent_class(self.network, agent_config, self.logger)
         return agent
 
     def execute(self, message, **kwargs):

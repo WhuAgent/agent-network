@@ -144,12 +144,7 @@ class Network(Executable):
                                         item["rule"])
             
     def load_planner(self):
-        vertexs = []
-        for vertex_name, vertex in self.vertexes.items():
-            if isinstance(vertex, AgentVertex):
-                vertexs.append(f"{vertex_name}: {vertex.description}")
-        agents_description = "\n".join(vertexs)
-        system_prompt = f"### 角色 ###\n你是一个团队中专业的任务规划者，善于根据团队中成员的能力，将用户需求分解成子任务，按顺序分配给团队中的其他成员完成。\n\n### 团队成员 ###\n你的团队中有以下成员：\n\n{ agents_description }\n\n### 目标 ###\n给定用户需求，你需要理解用户需求，并根据团队中成员的能力，为团队成员分配任务，形成一个可以完成用户需求的工作流。\n\n### 返回方式 ###\n请以 JSON 方式返回一个子任务列表，列表中的每一项包含两个字段：\n\ntask: 任务名称；\nexecutor: 执行任务的成员；\n\n### 返回示例 ###\n[\n    {{\n        \"task\": \"...\",\n        \"executor\": \"...\",\n    }},\n    {{\n        \"...\"\n    }}\n]\n"
+        system_prompt = f"### 角色 ###\n你是一个团队中专业的任务规划者，善于根据团队中成员的能力，将用户需求分解成子任务，按顺序分配给团队中的其他成员完成。\n\n"
         config = {
             "id": "AgentNetworkPlannerGroup/AgentNetworkPlanner",
             "description": "网络规划智能体",
