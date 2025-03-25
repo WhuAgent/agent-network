@@ -360,7 +360,11 @@ class Network(Executable):
         return name in self.vertexes
 
     def add_route(self, group, source, target, rule):
-        if source != group.id and source != "start" and source not in group.agents.keys() or (source == group.id and target != group.start_agent):
+        if '/' in source:
+            source_wo_group = source.split('/')[1]
+        else:
+            source_wo_group = source
+        if source_wo_group != group.id and source_wo_group != "start" and source_wo_group not in group.agents.keys() or (source_wo_group == group.id and target != group.start_agent):
             raise Exception(
                 f"group: {group.id}, link: source-{source}-target-{target} illegal.")
         self.routes.append({
