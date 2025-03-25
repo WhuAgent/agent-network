@@ -33,7 +33,7 @@ class Graph:
         self.cur_execution = None
         self.vertex_messages = dict()
 
-        ctx.register_graph(id, self)
+        ctx.register_graph(self.id, self)
 
     # def load_graph(self, graph: Network):
     #     # 加载节点
