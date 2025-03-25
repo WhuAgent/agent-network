@@ -11,6 +11,8 @@ def get_model_family(model):
         return "openai"
     if "deepseek" in model:
         return "deepseek"
+    if "qwen" in model or "qwq" in model:
+        return "qwen"
 
 
 def get_api_key(**kwargs):
