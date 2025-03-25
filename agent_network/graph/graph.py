@@ -471,6 +471,7 @@ class Graph:
             return self._execute_graph(network, route, task_vertexes, next_task_vertexes,
                                        third_party_next_task_vertexes, need_summary=need_summary)
         elif need_summary:
+            ctx.register("executionGraph", repr(self.trace))
             return self.summarize_result(network, route, task_vertexes,
                                          TaskVertex(
                                              network.get_vertex("AgentNetworkSummarizerGroup/AgentNetworkSummarizer"),
