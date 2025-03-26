@@ -68,6 +68,9 @@ class Logger:
 
         for message in self.message_history:
             file_path = os.path.join(self.log_dir, f"{message['instance']}.log")
+            file_dir = file_path[:file_path.rfind("/")]
+            if not os.path.exists(file_dir):
+                os.makedirs(file_dir)
             if self.global_switch:
                 with open(file_path, "a", encoding="UTF-8") as f:
                     buffer = "---------------------------------------------------\n"

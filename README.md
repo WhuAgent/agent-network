@@ -11,59 +11,144 @@ Python 版本：`3.10` 。
 最新稳定版本：
 
 ```
-pip install git+https://github.com/WhuAgent/agent-network.git@66900a7ee6f887d076e47ef5c26c33e3e8cf07fd
+pip install git+https://github.com/WhuAgent/agent-network.git@ITER_20250308_FLOW
 ```
 
-## 更新说明
+## 编写智能体
 
-### 20250315
+### 智能体配置及智能体组配置
 
-优化了智能体之间传递消息的方式。明确了 BaseAgent.forward() 方法的参数和返回值意义。
+详见agent_network/config文件夹下
 
+智能体：
+```json
+{
+  "id":"Agent1",
+  "name":"Agent1",
+  "title":"智能体1",
+  "description":"智能体1",
+  "keywords": ["微信", "签名", "微信服务号信息服务"],
+  "manual":"http://wechat.com/xxxx.html",
+  "prompt": "提示词",
+  "model": "gpt-3.5-turbo",
+  "params":[
+    { "title":"number1", "name":"number1", "type":"String", "notnull":true, "description": "数字1", "defaultValue":"" },
+    { "title":"number2", "name":"number2", "type":"String", "notnull":true, "description": "数字2", "defaultValue":"" }
+  ],
+  "results":[
+    { "title":"result", "name":"result", "type":"String", "notnull":true, "description":"结果", "defaultValue":"" },
+    { "title":"bool_result", "name":"bool_result", "type":"Boolean", "notnull":true, "description":"布尔结果", "defaultValue":"" }
+  ]
+}
+```
+智能体组：
+```json
+{
+  "id":"AgentGroup1",
+  "type":"python",
+  "title":"获取微信服务号签名",
+  "description":"获取微信服务号签名",
+  "prompt": "",
+  "keywords": ["微信", "签名", "微信服务号信息服务"],
+  "reference":"http://xxx/Scheduling/机器ID",
+  "manual":"http://wechat.com/xxxx.html",
+  "agents": ["Agent1", "Agent2"],
+  "params":[
+    { "title":"serviceId", "name":"serviceId", "type":"String", "notnull":true, "description": "服务号ID", "defaultValue":"" }
+  ],
+  "results":[
+    { "title":"result", "name":"result", "type":"String", "notnull":true, "description":"结果", "defaultValue":"" },
+    { "title":"bool_result", "name":"bool_result", "type":"Boolean", "notnull":true, "description":"布尔结果", "defaultValue":"" }
+  ]
+}
+```
+链接
+```json
+{
+  "group": "AgentGroup1",
+  "links": [
+    {
+      "source": "start",
+      "target": "Agent1",
+      "type": "soft"
+    },
+    {
+      "source": "Agent1",
+      "target": "Agent2",
+      "type": "soft"
+    }
+  ]
+}
+```
+
+### 编写智能体代码逻辑
+
+在agent.py下编写
 ```python
-def forward(self, messages, **kwargs):
-    # do something
-    
-    if # somtehing:
-        return result, next_execution
-    else:
-        return result
+# 继承BaseAgent，智能体名称：Agent1必须和配置文件前缀一致，否则无法顺利加载
+class Agent1(BaseAgent):
+    def __init__(self, graph, config, logger):
+        super().__init__(graph, config, logger)
+
+    def forward(self, message, **kwargs):
+        # kwargs对应配置文件params
+        messages = []
+        self.add_message("user", f"number1: {kwargs['number1']} number2: {kwargs['number2']}", messages)
+        # 调用大模型
+        response = self.chat_llm(messages)
+        print('response: ' + response.content)
+        result = int(kwargs['number1']) + int(kwargs['number2'])
+        # 执行错误时可能会抛出的异常
+        # raise ReportError()：协作异常 / RetryError()：重试异常
+        # 对应配置文件results
+        results = {
+            "bool_result": '1',
+            "result": result,
+        }
+        return messages, results
 ```
 
-forward 方法不再额外返回 messages 返回值，只返回执行结果 result 和下一个调用的智能体 next_execution。如果不返回 next_execution，则会自动调用路由里面的 search 方法，去寻找下一个执行的智能体（TODO：优化 search 方法）。
+### 配置智能体网络network.yaml
+固定的配置，注册所有的智能体组
+```yaml
+# graph 名称
+name: "AgentService1"
 
-如果要实现两个 Agent 之间相互对话，需要在 Agent 的 params 和 results 里面进行相应的配置。
+# graph 详细描述
+description: "计算智能体网络"
 
-### 20241220
+# 为了完成任务的计划，通过调用 group 完成任务
+groups:
+  - AgentGroup1
 
-实现了对话历史与 network 分离，储存在 graph 里，并且能够统计对话消耗 token。
-
-对消息格式进行了规范化，定义了 `SystemMessage`、`UserMessage`、`AssistantMessage` 和 `OpanAIMessage`。其中 `OpanAIMessage` 专指大模型返回的消息，而 `AssistantMessage` 可以指任何其他消息（主要用于日志记录）。
-
-#### BaseAgent.initial_system_message()
-
-现在的 agent 不再需要重写 `init_messages` 方法，`init_messages` 方法被修改为 `initial_system_message`，专门用于初始化 agent 的 system prompt。目前提供的 system prompt 初始化方式只有一种，即在配置文件里配置如下字段：
-
+# 任务执行过程中的上下文信息（如返回值等），用于 group 之间的信息传递
+context:
+  - name: "number1"
+    type: "str"
+  - name: "number2"
+    type: "str"
+  - name: "true_result"
+    type: "str"
 ```
-prompts:
-  - type: "inline"
-    role: "system"
-    content: <your system prompt>
+
+### 配置大模型openai.yaml
+```yaml
+"api_key": "sk-xxx"
+"base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+"model": "qwen2.5-32b-instruct"
 ```
 
-#### BaseAgent.forward()
-
-由于对话历史和 graph 分离，而 agent 又被储存在 graph 里，所以现在需要通过参数的形式传递历史消息。具体来说，`forward` 方法现在接收两个参数 `messages` 和 `**kwargs`，其中 `messages` 是本 agent 的历史对话记录，而 `**kwargs` 还是 yaml 文件中定义的 agent 从上下文中获取的参数。
-
-对应地，agent 也要返回两个返回值，新的历史消息记录 `messages` 和 agent 要输出到上下文中的结果 `results`。
-
-`BaseAgent` 类定义了一个方法 `add_message()`，用来向历史消息列表中添加一条消息，并返回新的列表。`BaseAgent.chat_llm()` 方法会自动在大模型返回之后调用 `add_message()`，因此在 `forward()` 方法中，调用 `cghat_llm()` 之后不再需要通过 `add_message()` 方法添加消息。
-
-### 20241026
-
-如果需要调用大模型，请直接使用 BaseAgent 提供的 `self.chat_llm` 方法，只有通过该方法进行的大模型调用才能被记录（token 和成本）。
-
-## TODO
-
-- [ ] 添加新的 system prompt 初始化方式，如根据 role、goal、context 等信息生成。
-- [ ] 支持更多的模型。
+### 配置智能体服务service.yaml
+```yaml
+# 服务组对应我们的graph，同一个graph的所有分布式智能体服务注册到注册中心上的同一个组，实现服务注册与发现
+"service_group": "agent-network"
+# 服务名是智能体功能的集合，包含当前智能体服务的所有节点，暴露为同一个微服务入口
+"service_name": "agent-network-service"
+"access_key": ""
+"secret_key": ""
+"center_addr": "http://localhost:8848"
+#"center_type": "nacos"
+"ip": "127.0.0.1"
+"port": "18080"
+"enabled": false
+```

@@ -51,7 +51,7 @@ class Vertex(ParameterizedExecutable):
             end_t = datetime.now().timestamp()
             ctx.register_time(end_t - begin_t)
             default_next_executors = [exe for exe in self.next_executables] if len(self.next_executables) > 0 else None
-            next_executors =  next_executors or default_next_executors
+            next_executors = next_executors or default_next_executors
             if next_executors and not isinstance(next_executors, list):
                 next_executors = [next_executors]
             self.next_executables.clear()

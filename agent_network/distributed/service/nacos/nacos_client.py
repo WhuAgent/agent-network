@@ -189,9 +189,9 @@ class NacosClient(Client):
         vertex_configs_list = json.loads(content)
         vertex_configs = []
         for vertex_config in vertex_configs_list:
-            nc = VertexConfig(vertex_config["name"], vertex_config["description"],
-                              vertex_config["task"], vertex_config["params"],
-                              vertex_config["results"], vertex_config["ip"], vertex_config["port"])
+            nc = VertexConfig(vertex_config["name"], vertex_config["title"], vertex_config["description"],
+                              vertex_config["params"], vertex_config["results"],
+                              vertex_config["ip"], vertex_config["port"])
             nc.service_name = service
             nc.service_group = self.service_group
             vertex_configs.append(nc)

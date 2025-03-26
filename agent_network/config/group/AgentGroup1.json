@@ -1,0 +1,18 @@
+{
+  "id":"AgentGroup1",
+  "type":"python",
+  "title":"获取微信服务号签名",
+  "description":"获取微信服务号签名",
+  "prompt": "",
+  "keywords": ["微信", "签名", "微信服务号信息服务"],
+  "reference":"http://xxx/Scheduling/机器ID",
+  "manual":"http://wechat.com/xxxx.html",
+  "agents": ["Agent1", "Agent2"],
+  "params":[
+    { "title":"serviceId", "name":"serviceId", "type":"String", "notnull":true, "description": "服务号ID", "defaultValue":"" }
+  ],
+  "results":[
+    { "title":"result", "name":"result", "type":"String", "notnull":true, "description":"结果", "defaultValue":"" },
+    { "title":"bool_result", "name":"bool_result", "type":"Boolean", "notnull":true, "description":"布尔结果", "defaultValue":"" }
+  ]
+}

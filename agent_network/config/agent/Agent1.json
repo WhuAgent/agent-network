@@ -1,0 +1,18 @@
+{
+  "id":"Agent1",
+  "name":"Agent1",
+  "title":"智能体1",
+  "description":"智能体1",
+  "keywords": ["微信", "签名", "微信服务号信息服务"],
+  "manual":"http://wechat.com/xxxx.html",
+  "prompt": "提示词",
+  "model": "gpt-3.5-turbo",
+  "params":[
+    { "title":"number1", "name":"number1", "type":"String", "notnull":true, "description": "数字1", "defaultValue":"" },
+    { "title":"number2", "name":"number2", "type":"String", "notnull":true, "description": "数字2", "defaultValue":"" }
+  ],
+  "results":[
+    { "title":"result", "name":"result", "type":"String", "notnull":true, "description":"结果", "defaultValue":"" },
+    { "title":"bool_result", "name":"bool_result", "type":"Boolean", "notnull":true, "description":"布尔结果", "defaultValue":"" }
+  ]
+}

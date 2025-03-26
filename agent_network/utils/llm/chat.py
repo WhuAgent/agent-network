@@ -1,5 +1,3 @@
-import os
-import yaml
 import json
 from openai import OpenAI
 from agent_network.utils.llm.message import Message, OpenAIMessage, model_cost
@@ -29,6 +27,11 @@ def chat_llm(messages: list[Message], **kwargs):
     openai_messages = []
     for message in messages:
         openai_messages.append(message.to_openai_message())
+
+    if model not in model_cost:
+        raise Exception(f"model: {model} is not supported by agent-network.")
+    if "stream" in model_cost[model] and model_cost[model]["stream"]:
+        kwargs["stream"] = True
 
     response = openai_client.chat.completions.create(
         messages=openai_messages,
