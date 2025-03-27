@@ -1,24 +1,13 @@
-Mozilla Public License 2.0 (MPL 2.0) - Modified for Non-Commercial Use  
+Mozilla Public License 2.0 (MPL 2.0)
 
-This software is licensed under the Mozilla Public License Version 2.0, with additional restrictions prohibiting commercial use.  
+This software is licensed under the Mozilla Public License Version 2.0. See https://www.mozilla.org/en-US/MPL/2.0/ for the full text.
 
--------------------------------------------------------------------------------  
-1. **License Grant**  
-Under this License, you are granted the rights to use, modify, distribute, and sublicense this software **only for non-commercial purposes**.  
+Additional Non-Commercial Use Restriction:
 
-2. **Non-Commercial Use Restriction**  
-You may not use this software, or any modifications thereof, for **commercial purposes**, including but not limited to:  
-   - Selling, licensing, or distributing this software or derivative works for a fee.  
-   - Using this software as part of a commercial product or service.  
-   - Integrating this software into proprietary software intended for commercial gain.  
+This software may only be used for non-commercial purposes. You may not use this software for commercial purposes, including but not limited to:
 
-3. **Attribution Requirement**  
-If you distribute copies of the software or modified versions, you must retain the original copyright notice and include a link to the official repository (if applicable).  
+- Selling, licensing, or distributing this software or derivative works for a fee.
+- Using this software as part of a commercial product or service.
+- Integrating this software into proprietary software intended for commercial gain.
 
-4. **Other Terms**  
-For all other terms, including definitions of "Covered Software" and "Contributor," the original **Mozilla Public License 2.0** applies. The full text of MPL 2.0 is available at:  
-https://www.mozilla.org/en-US/MPL/2.0/  
-
--------------------------------------------------------------------------------  
-DISCLAIMER: THIS SOFTWARE IS PROVIDED "AS IS," WITHOUT WARRANTY OF ANY KIND. THE AUTHORS AND CONTRIBUTORS ARE NOT LIABLE FOR ANY DAMAGES ARISING FROM THE USE OF THIS SOFTWARE.
-
+For all other terms, the Mozilla Public License 2.0 applies.
