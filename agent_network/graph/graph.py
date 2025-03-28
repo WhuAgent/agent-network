@@ -4,10 +4,11 @@ import traceback
 from agent_network.graph.history import History
 from agent_network.network.network import Network
 from agent_network.network.route import Route
-from agent_network.graph.task_vertex import TaskVertex
+from agent_network.task.vertex import TaskVertex
 from agent_network.utils.task import get_task_type
 import agent_network.graph.context as ctx
 from agent_network.graph.trace import Trace
+from agent_network.task.manager import TaskManager
 from agent_network.task.task_call import Parameter, TaskStatus
 from agent_network.network.vertexes.third_party.executable import ThirdPartySchedulerExecutable
 from agent_network.network.vertexes.vertex import ThirdPartyVertex
@@ -16,8 +17,10 @@ from agent_network.utils.logger import Logger
 
 
 class Graph:
-    def __init__(self, logger=Logger("log"), id=None):
+    def __init__(self, logger=Logger("log"), id=None, max_step=100):
         self.logger = logger
+        
+        self.max_step = max_step
         self.vertexes = []
         self.step = 0
         if id is None:
@@ -32,55 +35,18 @@ class Graph:
         self.execution_history: list[History] = []
         self.cur_execution = None
         self.vertex_messages = dict()
+        
+        self.task_manager = TaskManager()
 
         ctx.register_graph(self.id, self)
-
-    # def load_graph(self, graph: Network):
-    #     # 加载节点
-    #     for group in self.config["group_pipline"]:
-    #         group_config_path = list(group.values())[0]
-    #         with open(group_config_path, "r", encoding="utf-8") as f:
-    #             configs = yaml.safe_load(f)
-    #             if "ref_id" in configs:
-    #                 group = self.import_group(graph, configs)
-    #             else:
-    #                 group = BaseAgentGroup(graph, graph.route, configs, self.logger)
-    #             agents = group.load_agents()
-    #
-    #             graph.add_vertex(group.name, GroupNode(graph, group, group.params, group.results))
-    #             for agent in agents:
-    #                 graph.add_vertex(agent.name, AgentNode(graph, agent, agent.params, agent.results, group.name))
-    #
-    #             graph.add_route(group.name, group.name, group.start_agent, "start", "hard")
-    #             for route in group.routes:
-    #                 if "rule" not in route:
-    #                     route["rule"] = "soft"
-    #                 graph.add_route(group.name, route["source"], route["target"], route["type"], route["rule"])
-    #
-    #     vertexes = graph.get_vertexes()
-    #     # TODO 分布式下如何处理vertex_messages
-    #     for vertex in vertexes:
-    #         if system_message := graph.get_vertex(vertex).get_system_message():
-    #             self.vertex_messages[vertex] = [system_message]
-    #         else:
-    #             self.vertex_messages[vertex] = []
-    #     graph.refresh_vertexes_from_clients()
-    #     graph.load_route()
-
-    # def import_group(self, graph, group_config):
-    #     if "load_type" in group_config and group_config["load_type"] == "module":
-    #         group_module = importlib.import_module(group_config["loadModule"])
-    #         group_class = getattr(group_module, group_config["loadClass"])
-    #         group_instance = group_class(graph, graph.route, group_config, self.logger)
-    #     else:
-    #         raise Exception("Group load type must be module!")
-    #     return group_instance
 
     def execute(self, network: Network, task, start_vertex="AgentNetworkPlannerGroup/AgentNetworkPlanner", params=None,
                 results=None):
         if results is None:
             results = ["results"]
         try:
+            task_id = self.task_manager.add_task(task, network.get_vertex(start_vertex))
+            self.task_manager.cur_execution = [task_id]
             vertexes = network.get_vertexes()
             # TODO 分布式下如何处理vertex_messages
             for vertex in vertexes:
@@ -246,59 +212,6 @@ class Graph:
             self.release()
             raise Exception(e)
 
-    # def execute_task_plan(self, sub_task, graph, network: Network, start_vertex, params: list[Parameter],
-    #                              organizeId):
-    #     if "trace_id" not in graph or "total_level" not in graph or "level_details" not in graph or graph[
-    #         "total_level"] != len(graph["level_details"]):
-    #         raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
-    #     graph_level = graph["total_level"]
-    #     if graph_level > 0:
-    #         raise Exception(f"task: {graph['trace_id']}, plan error with graph: {graph}")
-    #     try:
-    #         vertexes = network.get_vertexes()
-    #         if start_vertex not in vertexes:
-    #             raise Exception(
-    #                 f"task: {graph['trace_id']}, graph error, vertex not found: {start_vertex}, graph: {graph}")
-    #         for vertex in vertexes:
-    #             if system_message := network.get_vertex(vertex).get_system_message():
-    #                 self.vertex_messages[vertex] = [system_message]
-    #             else:
-    #                 self.vertex_messages[vertex] = []
-    #         ctx.register("task", sub_task)
-    #         self.trace.add_vertexes([start_vertex])
-    #         if params:
-    #             ctx.registers(params)
-    #         task_vertex = TaskVertex(network.get_vertex(start_vertex), sub_task)
-    #         messages = self.vertex_messages[start_vertex]
-    #         len_message = len(messages)
-    #
-    #         self.execution_history.append(History(pre_executors=[TaskVertex(id="start")], cur_executor=task_vertex))
-    #         self.cur_execution = self.execution_history[-1]
-    #
-    #         # 更新 task_vertex 状态（开始运行）
-    #         task_vertex.set_status(TaskStatus.RUNNING.value)
-    #
-    #         cur_execution_result, next_executables = network.execute(task_vertex.id, messages)
-    #
-    #         self.cur_execution.llm_messages = messages[len_message:]
-    #         self.cur_execution.next_executors = next_executables
-    #
-    #         # 更新 task_vertex 状态（成功运行收集结果）
-    #         task_vertex.set_status(TaskStatus.SUCCESS.value)
-    #         task_vertex.time_cost = self.cur_execution.time_cost
-    #         for message in self.cur_execution.llm_messages:
-    #             task_vertex.token += message.token_num
-    #             task_vertex.token_cost += message.token_cost
-    #
-    #         if task_vertex.id != "AgentNetworkPlannerGroup/AgentNetworkPlanner" and ctx.retrieve("step") is not None:
-    #             ctx.register("step", ctx.retrieve("step") + 1)
-    #
-    #         return cur_execution_result
-    #     except Exception as e:
-    #         traceback.print_exc()
-    #         self.release()
-    #         raise Exception(e)
-
     def execute_task_plan(self, sub_task, graph, network: Network, start_vertex, params: list[Parameter],
                           organizeId):
         if "trace_id" not in graph or "total_level" not in graph or "level_details" not in graph or graph[
@@ -389,88 +302,113 @@ class Graph:
                        params=None,
                        results=["result"],
                        organizeId=None,
-                       need_summary=True,
-                       max_step=100):
-        if (task_vertexes is None or len(task_vertexes) == 0) and (
-                third_party_task_vertexes is None or len(third_party_task_vertexes) == 0):
-            return
-        if self.trace.level > 0:
-            pre_level_route_front = self.trace.get_level_routes_front()
-        adding_vertexes = [n.id for n in task_vertexes]
-        adding_vertexes.extend([n.id for n in third_party_task_vertexes])
-        self.trace.add_vertexes(adding_vertexes)
-        self.step += 1
-        # max_step = self.config.get("max_step", 100)
-        max_step = max_step
-        if self.step > max_step:
-            self.release()
-            # todo
-            raise Exception("Max step reached, Task Failed!")
+                       need_summary=True):
+        # 首先注册上下文
         if params:
             ctx.registers(params)
-        if len(third_party_task_vertexes) > 0 and self.trace.level > 0:
-            third_party_scheduler_executable = ThirdPartySchedulerExecutable(self.subtaskId, self.taskId, self,
-                                                                             organizeId,
-                                                                             pre_level_route_front)
-            third_party_scheduler_executable.execute()
-        # TODO 由感知层根据任务激活决定触发哪些 Agent，现在默认线性执行所有 TaskNode
-        next_task_vertexes: list[TaskVertex] = []
-        third_party_next_task_vertexes: list[TaskVertex] = []
-        for task_vertex in task_vertexes:
-            current_next_task_vertexes = []
-            # todo 讨论是否需要合并message到上下文中
-            messages = self.vertex_messages[task_vertex.id]
-            try:
-                len_message = len(messages)
-
-                self.execution_history.append(History(pre_executors=father_task_vertexes, cur_executor=task_vertex))
-                self.cur_execution = self.execution_history[-1]
-
-                # 更新 task_vertex 状态（开始运行）
-                task_vertex.set_status(TaskStatus.RUNNING.value)
-
-                # 如果是subtask列表中的新任务进来，需要能够根据之前执行完的subtasks构成的完整的执行图中恢复的上下文，自动填充当前subtask的executor需要的参数
-                route.forward_start(task_vertex.id)
-                cur_execution_result, next_executables = network.execute(task_vertex.id, messages)
-
-                self.cur_execution.llm_messages = messages[len_message:]
-                self.cur_execution.next_executors = next_executables
-
-                # 更新 task_vertex 状态（成功运行收集结果）
-                task_vertex.set_status(TaskStatus.SUCCESS.value)
-                task_vertex.time_cost = self.cur_execution.time_cost
-                for message in self.cur_execution.llm_messages:
-                    task_vertex.token += message.token_num
-                    task_vertex.token_cost += message.token_cost
-
-                if task_vertex.id != "AgentNetworkPlannerGroup/AgentNetworkPlanner" and ctx.retrieve(
-                        "step") is not None:
-                    ctx.register("step", ctx.retrieve("step") + 1)
-
-                targets = next_executables if next_executables else route.search(task_vertex.id)
-
-                for target in targets:
-                    route.forward_message(task_vertex.id, target)
-                    if target != "COMPLETE":
-                        vertex = network.get_vertex(target)
-                        next_task_vertex = TaskVertex(vertex)
-                        next_task_vertex.type = get_task_type(vertex)
-                        current_next_task_vertexes.append(next_task_vertex)
-
-                self.trace.add_spans(task_vertex, current_next_task_vertexes, messages)
-                current_third_party_next_task_vertexes = [ns for ns in current_next_task_vertexes if
-                                                          isinstance(ns.executable, ThirdPartyVertex)]
-                current_next_task_vertexes = [ns for ns in current_next_task_vertexes if
-                                              not isinstance(ns.executable, ThirdPartyVertex)]
-                third_party_next_task_vertexes.extend(current_third_party_next_task_vertexes)
-                next_task_vertexes.extend(current_next_task_vertexes)
-            except Exception as e:
+            
+        while not self.task_manager.task_all_completed():
+            
+            # trace 相关
+            if self.trace.level > 0:
+                pre_level_route_front = self.trace.get_level_routes_front()
+                
+            # 获取当前需要执行的任务
+            task_vertexes, third_party_task_vertexes = self.task_manager.get_cur_execution_tasks()
+            
+            # 向 trace 中添加节点
+            adding_vertexes = [n.id for n in task_vertexes]
+            adding_vertexes.extend([n.id for n in third_party_task_vertexes])
+            self.trace.add_vertexes(adding_vertexes)
+            
+            # 判断图执行步数是否超限
+            self.step += 1
+            if self.step > self.max_step:
                 self.release()
-                raise Exception(e)
-        if len(next_task_vertexes) > 0 or len(third_party_next_task_vertexes) > 0:
-            return self._execute_graph(network, route, task_vertexes, next_task_vertexes,
-                                       third_party_next_task_vertexes, need_summary=need_summary)
-        elif need_summary:
+                # todo
+                raise Exception("Max step reached, Task Failed!")
+            
+            # 执行三方节点任务
+            if len(third_party_task_vertexes) > 0 and self.trace.level > 0:
+                third_party_scheduler_executable = ThirdPartySchedulerExecutable(self.subtaskId, self.taskId, self,
+                                                                                organizeId,
+                                                                                pre_level_route_front)
+                third_party_scheduler_executable.execute()
+            
+            # TODO 由感知层根据任务激活决定触发哪些 Agent，现在默认线性执行所有 TaskNode
+            
+            # 执行智能体网络节点任务
+            for task in task_vertexes:
+                try:
+                    # 获取当前 agent 与大模型交互的历史上下文
+                    messages = self.vertex_messages[task.executable.id]
+                    len_message = len(messages)
+                    
+                    self.execution_history.append(History(pre_executors=self.task_manager.get_tasks(task.get_prev()), cur_executor=task))
+                    self.cur_execution = self.execution_history[-1]
+                    
+                    # 开始运行 task
+                    task.set_status(TaskStatus.RUNNING)
+                    
+                    # 如果是 subtask 列表中的新任务进来，需要能够根据之前执行完的subtasks构成的完整的执行图中恢复的上下文，自动填充当前subtask的executor需要的参数
+                    route.match_context(task.executable.id)
+                    cur_execution_result, next_tasks = network.execute(task.executable.id, messages)
+                    
+                    if task.executable.id == "AgentNetworkPlannerGroup/AgentNetworkPlanner":
+                        sub_tasks = cur_execution_result.get("sub_tasks")
+                        for sub_task in sub_tasks:
+                            self.task_manager.add_task(sub_task["task"], network.get_vertex(sub_task["executor"]))
+                            
+                        for i in range(1, self.task_manager.task_cnt + 1):
+                            if i != self.task_manager.task_cnt:
+                                self.task_manager.task_queue[i].next = [i + 1]
+                            if i != 1:
+                                self.task_manager.task_queue[i].prev = [i - 1]
+
+                    self.cur_execution.llm_messages = messages[len_message:]
+                    self.cur_execution.next_tasks = next_tasks
+                    
+                    # task 运行成功，收集相关结果
+                    task.set_status(TaskStatus.SUCCESS)
+                    task.time_cost = self.cur_execution.time_cost
+                    for message in self.cur_execution.llm_messages:
+                        task.token += message.token_num
+                        task.token_cost += message.token_cost
+
+                    if task.executable.id != "AgentNetworkPlannerGroup/AgentNetworkPlanner" and ctx.retrieve(
+                            "step") is not None:
+                        ctx.register("step", ctx.retrieve("step") + 1)
+
+                    # 搜索下一组任务
+                    next_tasks = next_tasks or route.search(task, self.task_manager)
+                    next_tasks_list = {}
+                    for next_task in next_tasks:
+                        if "id" not in next_task:
+                            next_task["id"] = None
+                        for k, v in next_task.items():
+                            if k not in next_tasks_list:
+                                next_tasks_list[k] = []
+                            if k == "executor":
+                                next_tasks_list[k].append(network.get_vertex(v))
+                            else:
+                                next_tasks_list[k].append(v)
+
+                    # 把下一组任务注册到任务管理器中
+                    if len(next_tasks_list) > 0:
+                        self.task_manager.add_next_tasks(task, next_tasks_list.get("id"), next_tasks_list.get("task"), next_tasks_list.get("executor"))
+                    # for next_task in next_tasks:
+                    #     self.task_manager.add_next_task(task, next_task["task"], network.get_vertex(next_task["executor"]), task_id=next_task.get("id"))
+
+                    next_task_vertexes, next_third_party_task_vertexes = self.task_manager.get_next_execution_tasks()
+                    next_task_vertexes.extend(next_third_party_task_vertexes)
+                    self.trace.add_spans(task, next_task_vertexes, messages)
+                    
+                    self.task_manager.refresh()
+                except Exception as e:
+                    self.release()
+                    raise Exception(e)
+        
+        if need_summary:
             ctx.register("executionGraph", repr(self.trace))
             return self.summarize_result(network, route, task_vertexes,
                                          TaskVertex(

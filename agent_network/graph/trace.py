@@ -3,9 +3,11 @@ import uuid
 from typing import Dict, List
 from agent_network.task.task_call import Parameter
 import agent_network.graph.context as ctx
-from agent_network.graph.task_vertex import TaskVertex
+from agent_network.task.vertex import TaskVertex
 from agent_network.network.vertexes.vertex import Vertex
 from agent_network.utils.task import get_task_type
+
+from agent_network.task.task_call import TaskStatus
 
 
 class Trace:
@@ -84,7 +86,7 @@ class Trace:
             "level_details": level_details,
             "planning_result": self.planningResult
         }
-        return json.dumps(repr_map)
+        return json.dumps(repr_map, default=lambda o: o.__dict__ if isinstance(o, TaskStatus) else None, ensure_ascii=False)
 
 
 class Span:

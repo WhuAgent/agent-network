@@ -66,8 +66,8 @@ class Network(Executable):
                     if "routes" in configs:
                         for route in configs["routes"]:
                             if group.start_agent is None and route["source"] == "start":
-                                group.start_agent = route["target"]
-                                self.add_route(group, group.id, route["target"], "hard")
+                                group.start_agent = f"{group.id}/{route['target']}"
+                                self.add_route(group, group.id, group.start_agent, "hard")
                                 break
                         for route in configs["routes"]:
                             if route["source"] == "start":
@@ -91,7 +91,7 @@ class Network(Executable):
                         agent_config_path = os.path.join(agent_dir, agent_file)
                         if agent_config_path[-5:] in [".json", ".yaml"]:
                             agent = group.load_agent(agent_dir, agent_file, agent)
-                            self.add_vertex(group.id + "/" + agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
+                            self.add_vertex(agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
                             # self.add_route(group, group_name, agent.id, "soft")
                     link_file = find_config_file(link_dir, group_name + "Link")
                     link_config_path = os.path.join(link_dir, link_file)
@@ -102,8 +102,8 @@ class Network(Executable):
                                 raise Exception(f"links' group match failed: {link_config_path}")
                             for link in configs["links"]:
                                 if link["source"] == "start":
-                                    group.start_agent = link["target"]
-                                    self.add_route(group, group.id, link["target"], "hard")
+                                    group.start_agent = f"{group.id}/{link['target']}"
+                                    self.add_route(group, group.id, group.start_agent, "hard")
                                     break
                             for link in configs["links"]:
                                 if link["source"] == "start":
@@ -160,17 +160,49 @@ class Network(Executable):
                     "notnull": True,
                     "description": "用户任务需求",
                     "defaultValue": ""
-                }
+                },
+                # {
+                #     "name": "sub_tasks",
+                #     "title": "sub_tasks",
+                #     "type": "dict",
+                #     "notnull": True,
+                #     "description": "子任务图",
+                #     "defaultValue": ""
+                # },
+                # {
+                #     "name": "task_queue",
+                #     "title": "task_queue",
+                #     "type": "queue",
+                #     "notnull": True,
+                #     "description": "当前任务执行队列",
+                #     "defaultValue": ""
+                # },
+                # {
+                #     "name": "next_task_id",
+                #     "title": "next_task_id",
+                #     "type": "int",
+                #     "notnull": True,
+                #     "description": "下一个任务id",
+                #     "defaultValue": ""
+                # }
             ],
             "results": [
-                {
-                    "name": "sub_tasks",
-                    "title": "result",
-                    "type": "str",
-                    "notnull": True,
-                    "description": "分解成的子任务",
-                    "defaultValue": ""
-                },
+                # {
+                #     "name": "sub_tasks",
+                #     "title": "result",
+                #     "type": "str",
+                #     "notnull": True,
+                #     "description": "分解成的子任务",
+                #     "defaultValue": ""
+                # },
+                # {
+                #     "name": "next_task_id",
+                #     "title": "next_task_id",
+                #     "type": "int",
+                #     "notnull": True,
+                #     "description": "下一个任务id",
+                #     "defaultValue": ""
+                # }
             ],
             "prompt": system_prompt
         }
@@ -181,8 +213,8 @@ class Network(Executable):
                                    network_planner_agent.description, 
                                    network_planner_agent.params, 
                                    network_planner_agent.results)
-        for vertex_name in self.vertexes.keys():
-            if vertex_name != network_planner_agent.id:
+        for vertex_name, vertex in self.vertexes.items():
+            if isinstance(vertex, GroupVertex) and vertex_name != network_planner_agent.id:
                 self.route.register_contact(network_planner_agent.id, vertex_name, "soft")
                 self.route.register_contact(vertex_name, network_planner_agent.id, "soft")
                 
@@ -228,9 +260,9 @@ class Network(Executable):
         ctx.shared_context(current_ctx)
         if vertex not in self.vertexes:
             raise Exception(f'vertex: {vertex} is absent from graph')
-        result, next_executables = self.vertexes.get(vertex).execute(messages, **kwargs)
+        result, next_tasks = self.vertexes.get(vertex).execute(messages, **kwargs)
         ctx.registers_global(ctx.retrieves([result["name"] for result in self.results] if self.results else []))
-        return result, next_executables
+        return result, next_tasks
 
     def add_vertex(self, name, vertex: Executable):
         if name not in self.vertexes:
@@ -368,8 +400,8 @@ class Network(Executable):
             raise Exception(
                 f"group: {group.id}, link: source-{source}-target-{target} illegal.")
         self.routes.append({
-            "source": source,
-            "target": target,
+            "source": source if source.startswith(group.id) else group.id + "/" + source,
+            "target": target if target.startswith(group.id) else group.id + "/" + target,
             "rule": rule
         })
 
