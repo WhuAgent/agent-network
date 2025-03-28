@@ -149,6 +149,8 @@ class Graph:
                 raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
         third_party_scheduler_executable = ThirdPartySchedulerExecutable(self.subtaskId, self.taskId, self, organizeId,
                                                                          None)
+
+        ctx.register("task", sub_task)
         try:
             vertexes = network.get_vertexes()
             if start_vertex not in vertexes:
@@ -354,14 +356,16 @@ class Graph:
             route = network.route
             targets = next_executables if next_executables else route.search(task_vertex.id)
 
+            sub_task_0 = ctx.retrieve("sub_tasks")[0]["task"]
             current_next_task_vertexes = []
             for target in targets:
                 route.forward_message(task_vertex.id, target)
                 if target != "COMPLETE":
                     vertex = network.get_vertex(target)
-                    next_task_vertex = TaskVertex(vertex, ctx.retrieve("sub_tasks")[0]["task"])
+                    next_task_vertex = TaskVertex(vertex, sub_task_0)
                     next_task_vertex.type = get_task_type(vertex)
                     current_next_task_vertexes.append(next_task_vertex)
+            ctx.register("task", sub_task_0)
 
             self.trace.add_spans(task_vertex, current_next_task_vertexes, messages)
             current_third_party_next_task_vertexes = [ns for ns in current_next_task_vertexes if
