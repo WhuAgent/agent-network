@@ -88,6 +88,8 @@ class Graph:
                     self.vertex_messages[vertex] = [system_message]
                 else:
                     self.vertex_messages[vertex] = []
+            if params is None:
+                params = {}
             if "task" not in params.keys():
                 params["task"] = task
             return self._execute_graph(network,
