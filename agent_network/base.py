@@ -238,10 +238,8 @@ class BaseAgentGroup(Executable):
         if self.start_agent is None:
             raise Exception(f"group: {self.id} don't have start agent.")
         results = {
-            "message": message,
-            "next_agent": self.start_agent
         }
-        return message, results
+        return results, [self.start_agent]
 
     def add_agent(self, name):
         assert name not in list(self.current_agents_name), f"agent {name} already exist in group {self.id}"
