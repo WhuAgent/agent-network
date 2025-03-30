@@ -117,9 +117,12 @@ class Graph:
             for level_route_vertex, level_target_map in level_detail["level_routes"].items():
                 level_route_vertexes = []
                 for level_target, level_target_detail in level_target_map.items():
-                    ntv = TaskVertex(network.get_vertex(level_target), level_target_detail["task"])
-                    ntv.type = level_target_detail["type"]
-                    level_route_vertexes.append(ntv)
+                    try:
+                        ntv = TaskVertex(network.get_vertex(level_target), level_target_detail["task"])
+                        ntv.type = level_target_detail["type"]
+                        level_route_vertexes.append(ntv)
+                    except:
+                        self.logger.log("system", f"level_target_detail parse error: {level_target} {level_target_detail}")
                 level_route_map[level_route_vertex] = level_route_vertexes
             # 按照span注册上下文
             for level_span_vertex, span_detail in level_detail["level_spans"].items():
@@ -193,9 +196,12 @@ class Graph:
             for level_route_vertex, level_target_map in level_detail["level_routes"].items():
                 level_route_vertexes = []
                 for level_target, level_target_detail in level_target_map.items():
-                    ntv = TaskVertex(network.get_vertex(level_target), level_target_detail["task"])
-                    ntv.type = level_target_detail["type"]
-                    level_route_vertexes.append(ntv)
+                    try:
+                        ntv = TaskVertex(network.get_vertex(level_target), level_target_detail["task"])
+                        ntv.type = level_target_detail["type"]
+                        level_route_vertexes.append(ntv)
+                    except:
+                        self.logger.log("system", f"level_target_detail parse error: {level_target} {level_target_detail}")
                 level_route_map[level_route_vertex] = level_route_vertexes
             # 按照span注册上下文
             for level_span_vertex, span_detail in level_detail["level_spans"].items():

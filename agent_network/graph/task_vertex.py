@@ -8,7 +8,14 @@ class TaskVertex:
                  time_cost=0, type=None):
         self.task = task
         self.executable = executable
-        self.id = id if id else self.executable.name
+        try:
+            self.id = id if id else self.executable.name
+        except:
+            try:
+                print(f"{self.executable.id}")
+            except:
+                print(f"{self.executable} id not exist")
+                pass
         self.status = status
         self.token = token
         self.token_cost = token_cost
