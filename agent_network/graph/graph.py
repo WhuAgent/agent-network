@@ -273,7 +273,7 @@ class Graph:
                 ctx.register("step", ctx.retrieve("step") + 1)
 
             route = network.route
-            targets = next_executables if next_executables else route.search(task_vertex.id)
+            targets = next_executables if next_executables else route.search(task_vertex, self.task_manager)
 
             sub_task_0 = ctx.retrieve("sub_tasks")[0]["task"]
             current_next_task_vertexes = []
