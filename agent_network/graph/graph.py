@@ -353,7 +353,7 @@ class Graph:
             for task in task_vertexes:
                 try:
                     # 获取当前 agent 与大模型交互的历史上下文
-                    messages = self.vertex_messages[task.executable.id]
+                    messages = self.vertex_messages[task.executable.name]
                     len_message = len(messages)
                     
                     self.execution_history.append(History(pre_executors=self.task_manager.get_tasks(task.get_prev()), cur_executor=task))
@@ -363,10 +363,10 @@ class Graph:
                     task.set_status(TaskStatus.RUNNING)
                     
                     # 如果是 subtask 列表中的新任务进来，需要能够根据之前执行完的subtasks构成的完整的执行图中恢复的上下文，自动填充当前subtask的executor需要的参数
-                    route.match_context(task.executable.id)
-                    cur_execution_result, next_tasks = network.execute(task.executable.id, messages)
+                    route.match_context(task.executable.name)
+                    cur_execution_result, next_tasks = network.execute(task.executable.name, messages)
                     
-                    if task.executable.id == "AgentNetworkPlannerGroup/AgentNetworkPlanner":
+                    if task.executable.name == "AgentNetworkPlannerGroup/AgentNetworkPlanner":
                         sub_tasks = cur_execution_result.get("sub_tasks")
                         for sub_task in sub_tasks:
                             self.task_manager.add_task(sub_task["task"], network.get_vertex(sub_task["executor"]))
@@ -387,7 +387,7 @@ class Graph:
                         task.token += message.token_num
                         task.token_cost += message.token_cost
 
-                    if task.executable.id != "AgentNetworkPlannerGroup/AgentNetworkPlanner" and ctx.retrieve(
+                    if task.executable.name != "AgentNetworkPlannerGroup/AgentNetworkPlanner" and ctx.retrieve(
                             "step") is not None:
                         ctx.register("step", ctx.retrieve("step") + 1)
 

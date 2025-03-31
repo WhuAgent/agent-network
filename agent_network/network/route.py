@@ -137,7 +137,7 @@ class Route(Communicate):
         next_tasks = None
         
         task = cur_task.get_task()
-        executor = cur_task.executable.id
+        executor = cur_task.executable.name
 
         # if self.all_results_generated(ctx.retrieves_all(), final_results):
         #     targets = ["COMPLETE"]
@@ -148,7 +148,7 @@ class Route(Communicate):
                 {
                     "id": id,
                     "task": task_manager.get_task(id).get_task(),
-                    "executor": task_manager.get_task(id).executable.id
+                    "executor": task_manager.get_task(id).executable.name
                 } for id in cur_task.next
             ]
 

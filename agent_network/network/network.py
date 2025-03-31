@@ -79,7 +79,6 @@ class Network(Executable):
                     self.add_vertex(group.id, GroupVertex(self, group, group.params, group.results))
                     for agent in agents:
                         self.add_vertex(group.id + "/" + agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
-                        # self.add_route(group, group_name, agent.id, "soft")
 
             elif ".json" == group_config_path[-5:]:
                 with open(group_config_path, "r", encoding="utf-8") as f:
@@ -91,8 +90,8 @@ class Network(Executable):
                         agent_config_path = os.path.join(agent_dir, agent_file)
                         if agent_config_path[-5:] in [".json", ".yaml"]:
                             agent = group.load_agent(agent_dir, agent_file, agent)
-                            self.add_vertex(agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
-                            # self.add_route(group, group_name, agent.id, "soft")
+                            agent_vertex = AgentVertex(self, agent, agent.params, agent.results, group.id)
+                            self.add_vertex(agent_vertex.name, agent_vertex)
                     link_file = find_config_file(link_dir, group_name + "Link")
                     link_config_path = os.path.join(link_dir, link_file)
                     if link_config_path[-5:] in [".json", ".yaml"]:
@@ -102,17 +101,13 @@ class Network(Executable):
                                 raise Exception(f"links' group match failed: {link_config_path}")
                             for link in configs["links"]:
                                 if link["source"] == "start":
-                                    group.start_agent = f"{group.id}/{link['target']}"
+                                    group.start_agent = link['target']
                                     self.add_route(group, group.id, group.start_agent, "hard")
                                     break
                             for link in configs["links"]:
                                 if link["source"] == "start":
                                     continue
                                 self.add_route(group, link["source"], link["target"], link["type"])
-            # for route in self.routes:
-            #     if route["source"] != "start" and route["source"] not in group.agents.keys():
-            #         raise Exception(
-            #             f"group: {group_name}, link: source-{route['source']}-target-{route['target']} illegal.")
         for client in self.clients:
             asyncio.get_event_loop().run_until_complete(client.register(self.vertexes.values()))
         self.refresh_vertexes_from_clients()

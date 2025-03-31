@@ -125,7 +125,7 @@ def register_llm_action(messages: list[Message]):
     graph = retrieve(graph_key)
     if graph is None:
         raise Exception("graph is not in the current context")
-    vertex = graph.cur_execution.cur_executor.executable.id
+    vertex = graph.cur_execution.cur_executor.executable.name
 
     for i in range(len(graph.vertex_messages[vertex]), len(messages)):
         graph.vertex_messages[vertex].append(messages[i])
