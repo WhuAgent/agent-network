@@ -30,3 +30,10 @@ class TaskStatus(Enum):
     HUMAN_CHECK = 6
     FINISH = 7
     FINISH_ERROR = 8
+    
+    def __dict__(self):
+        repr_map = {
+            "name": self.name,
+            "value": self.value
+        }
+        return repr_map

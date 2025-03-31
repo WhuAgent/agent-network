@@ -95,10 +95,10 @@ class BaseAgent(Executable):
         begin_t = datetime.now().timestamp()
         # messages, results = self.forward(messages, **kwargs)
         results = self.forward(messages, **kwargs)
-        if "next_executors" in results:
-            next_executors = results.pop("next_executors")
+        if "next_tasks" in results:
+            next_tasks = results.pop("next_tasks")
         else:
-            next_executors = None
+            next_tasks = None
         # if len(returns) == 1:
         #     results = returns
         #     next_executors = None
@@ -108,7 +108,7 @@ class BaseAgent(Executable):
         self.log("network", f"AGENT {self.id} time cost: {end_t - begin_t}", self.id)
         time_cost = end_t - begin_t
         self.time_costs.append(UsageTime(begin_t, time_cost))
-        return results, next_executors
+        return results, next_tasks
     
     def chat_llm(self, messages, json_response=False, **kwargs):
         # todo 该时间不精准，应该取execute的开始时间
@@ -182,8 +182,8 @@ class BaseAgentGroup(Executable):
         self.network = network
         self.route = route
         self.title = config["title"]
-        self.name = config["name"]
         self.class_name = self.config["ref_id"] if "ref_id" in self.config else self.id
+        self.name = config.get("name") or self.class_name
 
         self.params = self.config.get("params")
         self.results = self.config.get("results")
@@ -234,13 +234,26 @@ class BaseAgentGroup(Executable):
         agent = agent_class(self.network, agent_config, self.logger)
         return agent
 
-    def execute(self, message, **kwargs):
+    def forward(self, messages, **kwargs):
+        results = {
+            "next_tasks": [
+                {
+                    "task": kwargs.get("task"),
+                    "executor": self.start_agent
+                }
+            ]
+        }
+        return results
+
+    def execute(self, messages, **kwargs):
         if self.start_agent is None:
             raise Exception(f"group: {self.id} don't have start agent.")
-        results = {
-        }
-        return results, [self.start_agent]
-
+        results = self.forward(messages, **kwargs)
+        if "next_tasks" in results:
+            next_tasks = results.pop("next_tasks")
+        else:
+            next_tasks = None
+        return results, next_tasks
     def add_agent(self, name):
         assert name not in list(self.current_agents_name), f"agent {name} already exist in group {self.id}"
         self.agents.setdefault(name, [])

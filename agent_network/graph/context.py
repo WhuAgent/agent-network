@@ -47,7 +47,7 @@ def register(key, value):
 
 
 def registers(params_map):
-    if params_map is None:
+    if not params_map:
         return
     for key, value in params_map.items():
         register(key, value)
@@ -125,7 +125,7 @@ def register_llm_action(messages: list[Message]):
     graph = retrieve(graph_key)
     if graph is None:
         raise Exception("graph is not in the current context")
-    vertex = graph.cur_execution.cur_executor.id
+    vertex = graph.cur_execution.cur_executor.executable.id
 
     for i in range(len(graph.vertex_messages[vertex]), len(messages)):
         graph.vertex_messages[vertex].append(messages[i])

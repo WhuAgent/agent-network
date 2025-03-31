@@ -26,7 +26,7 @@ class Vertex(ParameterizedExecutable):
             kwargs["graph_error_message"] = error_message
         begin_t = datetime.now().timestamp()
         try:
-            results, next_executors = self.executable.execute(messages, **kwargs)
+            results, next_tasks = self.executable.execute(messages, **kwargs)
         except RetryError as e:
             end_t = datetime.now().timestamp()
             ctx.register_time(end_t - begin_t)
@@ -35,25 +35,30 @@ class Vertex(ParameterizedExecutable):
             else:
                 kwargs["graph_error_message"] = [e.message]
             if len(kwargs["graph_error_message"]) < 5:
-                results, next_executors = self.execute(messages, **kwargs)
+                results, next_tasks = self.execute(messages, **kwargs)
             else:
                 raise Exception(e, "Task Failed")
         except ReportError as e:
             end_t = datetime.now().timestamp()
             ctx.register_time(end_t - begin_t)
             results = e.error_message
-            next_executors = [e.next_vertex]
+            next_task = {
+                "task": e.error_message,
+                "executor": e.next_vertex,
+            }
             ctx.register("graph_error_message", [e.error_message])
-            return results, next_executors
+            return results, [next_task]
         except Exception as e:
+            end_t = datetime.now().timestamp()
+            ctx.register_time(end_t - begin_t)
             raise Exception(e, "Task Failed")
         else:
             end_t = datetime.now().timestamp()
             ctx.register_time(end_t - begin_t)
             default_next_executors = [exe for exe in self.next_executables] if len(self.next_executables) > 0 else None
-            next_executors = next_executors or default_next_executors
-            if next_executors and not isinstance(next_executors, list):
-                next_executors = [next_executors]
+            next_tasks =  next_tasks or default_next_executors
+            if next_tasks and not isinstance(next_tasks, list):
+                next_tasks = [next_tasks]
             self.next_executables.clear()
 
         ctx.registers(results)
@@ -62,7 +67,7 @@ class Vertex(ParameterizedExecutable):
 
         if ctx.retrieve("graph_error_message"):
             ctx.delete("graph_error_message")
-        return results, next_executors
+        return results, next_tasks
 
     def release(self):
         if self.executable is not None:
