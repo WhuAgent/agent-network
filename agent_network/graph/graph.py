@@ -172,7 +172,8 @@ class Graph:
                     ctx.register(span_param["name"], span_param["value"])
                 span_results = span_detail["results"]
                 for span_result in span_results:
-                    ctx.register(span_result["name"], span_result["value"])
+                    if "value" in span_result:
+                        ctx.register(span_result["name"], span_result["value"])
                 spans = span_detail["spans"]
                 messages = span_detail["messages"]
                 recovery_messages = []
