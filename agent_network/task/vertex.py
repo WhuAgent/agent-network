@@ -19,6 +19,7 @@ class TaskVertex:
         self.executable = executable
         try:
             self.id = id if id else self.executable.name
+            self.name = self.executable.name
         except:
             try:
                 print(f"{self.executable.id}")

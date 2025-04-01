@@ -111,6 +111,7 @@ class Network(Executable):
                                 self.add_route(group, link["source"], link["target"], link["type"])
         for client in self.clients:
             asyncio.get_event_loop().run_until_complete(client.register(self.vertexes.values()))
+        self.route = Route()
         self.refresh_vertexes_from_clients()
         self.load_route()
 
@@ -127,7 +128,6 @@ class Network(Executable):
         return group_instance
 
     def load_route(self):
-        self.route = Route()
         for vertex_name, vertex_instance in self.vertexes.items():
             if not self.route.vertex_exist(vertex_name):
                 self.route.register_vertex(vertex_name, vertex_instance.description, vertex_instance.params,
@@ -184,14 +184,14 @@ class Network(Executable):
                 # }
             ],
             "results": [
-                # {
-                #     "name": "sub_tasks",
-                #     "title": "result",
-                #     "type": "str",
-                #     "notnull": True,
-                #     "description": "分解成的子任务",
-                #     "defaultValue": ""
-                # },
+                {
+                    "name": "sub_tasks",
+                    "title": "result",
+                    "type": "str",
+                    "notnull": True,
+                    "description": "分解成的子任务",
+                    "defaultValue": ""
+                },
                 # {
                 #     "name": "next_task_id",
                 #     "title": "next_task_id",
@@ -442,16 +442,16 @@ class Network(Executable):
             if not self.vertex_exists(vertex.id):
                 self.add_vertex(vertex.id, vertex)
                 self.route.register_vertex(vertex.id,
-                                           vertex.description,
-                                           vertex.params,
-                                           vertex.results)
+                                               vertex.description,
+                                               vertex.params,
+                                               vertex.results)
                 self.logger.log("Agent-Network-Graph",
                                 f"VERTEX: {vertex.id} TYPE: ThirdPartyNode has been added from the refresh",
                                 self.name)
             else:
                 third_party_exist_vertexes.remove(third_party_vertex_key_prefix + '&&' + vertex.id)
         for third_party_exist_vertex in third_party_exist_vertexes:
-            self.remove_third_party_vertex(service_name, service_group, third_party_exist_vertex.split['&&'][2])
+            self.remove_third_party_vertex(service_name, service_group, third_party_exist_vertex.split('&&')[2])
 
     def remove_third_party_vertexes(self, service_name, service_group):
         third_party_vertex_key_prefix = service_group + '&&' + service_name

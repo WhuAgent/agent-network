@@ -141,16 +141,6 @@ class Route(Communicate):
         # if self.all_results_generated(ctx.retrieves_all(), final_results):
         #     targets = ["COMPLETE"]
 
-        # 按照 task_manager 走下一个 task
-        if not next_tasks:
-            next_tasks = [
-                {
-                    "id": id,
-                    "task": task_manager.get_task(id).get_task(),
-                    "executor": task_manager.get_task(id).executable.name
-                } for id in cur_task.next
-            ]
-
         # 寻找硬路由
         if not next_tasks:
             if targets := self.find_hard_targets(executor):
@@ -162,19 +152,15 @@ class Route(Communicate):
                     } for target in targets
                 ]
 
-        # if not targets and executor in self.contact_list:
-        #     targets_map = self.contact_list[executor]
-        #     target_avaliable = targets_map.keys()
-        #     current_step = ctx.retrieve("step")
-        #     sub_tasks = ctx.retrieve("sub_tasks")
-        #     if current_step is not None and sub_tasks is not None:
-        #         targets = [0] if current_step == -1 else sub_tasks[current_step]["next"]
-        #         for i, target in enumerate(targets):
-        #             targets[i] = sub_tasks[target].get("executor") if target != -1 else "COMPLETE"
-
-        #         for target in targets:
-        #             if target != "COMPLETE" and target not in target_avaliable:
-        #                 self.register_contact(source, target, "soft")
+        # 按照 task_manager 走下一个 task
+        if not next_tasks:
+            next_tasks = [
+                {
+                    "id": id,
+                    "task": task_manager.get_task(id).get_task(),
+                    "executor": task_manager.get_task(id).executable.name
+                } for id in cur_task.next
+            ]
         return next_tasks if next_tasks is not None else []
 
     def all_results_generated(self, current_context, final_results):
