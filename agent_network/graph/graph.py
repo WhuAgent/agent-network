@@ -388,7 +388,7 @@ class Graph:
                     self.cur_execution = self.execution_history[-1]
 
                     # 开始运行 task
-                    task.set_status(TaskStatus.RUNNING)
+                    task.set_status(TaskStatus.RUNNING.value)
 
                     # 如果是 subtask 列表中的新任务进来，需要能够根据之前执行完的subtasks构成的完整的执行图中恢复的上下文，自动填充当前subtask的executor需要的参数
                     route.match_context(task.executable.name)
@@ -409,7 +409,7 @@ class Graph:
                     self.cur_execution.next_tasks = next_tasks
 
                     # task 运行成功，收集相关结果
-                    task.set_status(TaskStatus.SUCCESS)
+                    task.set_status(TaskStatus.SUCCESS.value)
                     task.time_cost = self.cur_execution.time_cost
                     for message in self.cur_execution.llm_messages:
                         task.token += message.token_num
