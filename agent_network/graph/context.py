@@ -6,6 +6,8 @@ thread_local_data = threading.local()
 global_map = {}
 graph_key = "$$$$$Graph$$$$$"
 graph_id_key = "$$$$$GraphID$$$$$"
+task_id_key = "$$$$$TaskID$$$$$"
+sub_task_id_key = "$$$$$SubTaskID$$$$$"
 
 
 def register_global(key, value):
@@ -133,3 +135,18 @@ def register_llm_action(messages: list[Message]):
     for i in range(graph.message_num, len(messages)):
         graph.cur_execution.llm_messages.append(messages[i])
         graph.message_num += 1
+
+
+def register_task_id(task_id, subtask_id):
+    if retrieve(task_id_key) is not None or retrieve(sub_task_id_key) is not None:
+        raise Exception("task register duplicated")
+    register(task_id_key, task_id)
+    register(sub_task_id_key, subtask_id)
+
+
+def retrieve_task_id():
+    task_id = retrieve(task_id_key)
+    subtask_id = retrieve(sub_task_id_key)
+    if task_id is None or subtask_id is None:
+        raise Exception("task id is not within current context")
+    return task_id, subtask_id

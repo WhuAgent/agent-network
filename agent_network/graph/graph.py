@@ -70,6 +70,7 @@ class Graph:
             raise Exception(e)
 
     def execute_task_call(self, sub_task, graph, network: Network, start_vertex, params: list[Parameter], organizeId):
+        ctx.register_task_id(self.taskId, self.subtaskId)
         if "trace_id" not in graph or "total_level" not in graph or "level_details" not in graph or graph[
             "total_level"] != len(graph["level_details"]):
             raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
