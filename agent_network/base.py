@@ -206,8 +206,6 @@ class BaseAgentGroup(Executable):
             else:
                 with open(os.path.join(agent_dir, agent_name + file_suffix), "r", encoding="utf-8") as f:
                     agent_config = yaml.safe_load(f)
-                if not agent_config.get("id").startswith(self.id):
-                    agent_config["id"] = f"{self.id}/{agent_config['id']}"
                 agent = self.import_agent(agent_config)
             agents.append(agent)
             self.agents.setdefault(agent_name, [])
@@ -222,8 +220,6 @@ class BaseAgentGroup(Executable):
         else:
             with open(os.path.join(agent_dir, agent_file), "r", encoding="utf-8") as f:
                 agent_config = json.load(f) if agent_file.endswith(".json") else yaml.safe_load(f)
-                if not agent_config.get("id").startswith(self.id):
-                    agent_config["id"] = f"{self.id}/{agent_config['id']}"
                 agent_module = importlib.import_module("agent")
                 agent_class = getattr(agent_module, agent_name)
                 agent = agent_class(self.network, agent_config, self.logger)
@@ -237,7 +233,7 @@ class BaseAgentGroup(Executable):
         agent_class = getattr(agent_module, agent_config["id"])
         agent = agent_class(self.network, agent_config, self.logger)
         return agent
-    
+
     def forward(self, messages, **kwargs):
         results = {
             "next_tasks": [

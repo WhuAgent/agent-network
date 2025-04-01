@@ -54,6 +54,8 @@ class Graph:
                     self.vertex_messages[vertex] = [system_message]
                 else:
                     self.vertex_messages[vertex] = []
+            if params is None:
+                params = {}
             if "task" not in params.keys():
                 params["task"] = task
             return self._execute_graph(network,
@@ -81,9 +83,12 @@ class Graph:
             for level_route_vertex, level_target_map in level_detail["level_routes"].items():
                 level_route_vertexes = []
                 for level_target, level_target_detail in level_target_map.items():
-                    ntv = TaskVertex(network.get_vertex(level_target), level_target_detail["task"])
-                    ntv.type = level_target_detail["type"]
-                    level_route_vertexes.append(ntv)
+                    try:
+                        ntv = TaskVertex(network.get_vertex(level_target), level_target_detail["task"])
+                        ntv.type = level_target_detail["type"]
+                        level_route_vertexes.append(ntv)
+                    except:
+                        self.logger.log("system", f"level_target_detail parse error: {level_target} {level_target_detail}")
                 level_route_map[level_route_vertex] = level_route_vertexes
             # 按照span注册上下文
             for level_span_vertex, span_detail in level_detail["level_spans"].items():
@@ -113,6 +118,8 @@ class Graph:
                 raise Exception(f"task: {graph['trace_id']}, graph error: {graph}")
         third_party_scheduler_executable = ThirdPartySchedulerExecutable(self.subtaskId, self.taskId, self, organizeId,
                                                                          None)
+
+        ctx.register("task", sub_task)
         try:
             vertexes = network.get_vertexes()
             if start_vertex not in vertexes:
@@ -155,9 +162,12 @@ class Graph:
             for level_route_vertex, level_target_map in level_detail["level_routes"].items():
                 level_route_vertexes = []
                 for level_target, level_target_detail in level_target_map.items():
-                    ntv = TaskVertex(network.get_vertex(level_target), level_target_detail["task"])
-                    ntv.type = level_target_detail["type"]
-                    level_route_vertexes.append(ntv)
+                    try:
+                        ntv = TaskVertex(network.get_vertex(level_target), level_target_detail["task"])
+                        ntv.type = level_target_detail["type"]
+                        level_route_vertexes.append(ntv)
+                    except:
+                        self.logger.log("system", f"level_target_detail parse error: {level_target} {level_target_detail}")
                 level_route_map[level_route_vertex] = level_route_vertexes
             # 按照span注册上下文
             for level_span_vertex, span_detail in level_detail["level_spans"].items():
@@ -263,16 +273,18 @@ class Graph:
                 ctx.register("step", ctx.retrieve("step") + 1)
 
             route = network.route
-            targets = next_executables if next_executables else route.search(task_vertex.id)
+            targets = next_executables if next_executables else route.search(task_vertex, self.task_manager)
 
+            sub_task_0 = ctx.retrieve("sub_tasks")[0]["task"]
             current_next_task_vertexes = []
             for target in targets:
                 route.forward_message(task_vertex.id, target)
                 if target != "COMPLETE":
                     vertex = network.get_vertex(target)
-                    next_task_vertex = TaskVertex(vertex, ctx.retrieve("sub_tasks")[0]["task"])
+                    next_task_vertex = TaskVertex(vertex, sub_task_0)
                     next_task_vertex.type = get_task_type(vertex)
                     current_next_task_vertexes.append(next_task_vertex)
+            ctx.register("task", sub_task_0)
 
             self.trace.add_spans(task_vertex, current_next_task_vertexes, messages)
             current_third_party_next_task_vertexes = [ns for ns in current_next_task_vertexes if
@@ -341,7 +353,7 @@ class Graph:
             for task in task_vertexes:
                 try:
                     # 获取当前 agent 与大模型交互的历史上下文
-                    messages = self.vertex_messages[task.executable.id]
+                    messages = self.vertex_messages[task.executable.name]
                     len_message = len(messages)
                     
                     self.execution_history.append(History(pre_executors=self.task_manager.get_tasks(task.get_prev()), cur_executor=task))
@@ -351,10 +363,10 @@ class Graph:
                     task.set_status(TaskStatus.RUNNING)
                     
                     # 如果是 subtask 列表中的新任务进来，需要能够根据之前执行完的subtasks构成的完整的执行图中恢复的上下文，自动填充当前subtask的executor需要的参数
-                    route.match_context(task.executable.id)
-                    cur_execution_result, next_tasks = network.execute(task.executable.id, messages)
+                    route.match_context(task.executable.name)
+                    cur_execution_result, next_tasks = network.execute(task.executable.name, messages)
                     
-                    if task.executable.id == "AgentNetworkPlannerGroup/AgentNetworkPlanner":
+                    if task.executable.name == "AgentNetworkPlannerGroup/AgentNetworkPlanner":
                         sub_tasks = cur_execution_result.get("sub_tasks")
                         for sub_task in sub_tasks:
                             self.task_manager.add_task(sub_task["task"], network.get_vertex(sub_task["executor"]))
@@ -375,7 +387,7 @@ class Graph:
                         task.token += message.token_num
                         task.token_cost += message.token_cost
 
-                    if task.executable.id != "AgentNetworkPlannerGroup/AgentNetworkPlanner" and ctx.retrieve(
+                    if task.executable.name != "AgentNetworkPlannerGroup/AgentNetworkPlanner" and ctx.retrieve(
                             "step") is not None:
                         ctx.register("step", ctx.retrieve("step") + 1)
 
