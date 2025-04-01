@@ -73,12 +73,13 @@ class Network(Executable):
                             if route["source"] == "start":
                                 continue
                             self.add_route(group, route["source"], route["target"],
-                                       route["rule"] if "rule" in route else "soft")
+                                           route["rule"] if "rule" in route else "soft")
                     agents = group.load_agents(agent_dir, ".yaml")
 
                     self.add_vertex(group.id, GroupVertex(self, group, group.params, group.results))
                     for agent in agents:
-                        self.add_vertex(group.id + "/" + agent.id, AgentVertex(self, agent, agent.params, agent.results, group.id))
+                        self.add_vertex(group.id + "/" + agent.id,
+                                        AgentVertex(self, agent, agent.params, agent.results, group.id))
 
             elif ".json" == group_config_path[-5:]:
                 with open(group_config_path, "r", encoding="utf-8") as f:
@@ -112,7 +113,7 @@ class Network(Executable):
             asyncio.get_event_loop().run_until_complete(client.register(self.vertexes.values()))
         self.refresh_vertexes_from_clients()
         self.load_route()
-        
+
         self.load_planner()
         self.load_summarizer()
 
@@ -129,7 +130,8 @@ class Network(Executable):
         self.route = Route()
         for vertex_name, vertex_instance in self.vertexes.items():
             if not self.route.vertex_exist(vertex_name):
-                self.route.register_vertex(vertex_name, vertex_instance.description, vertex_instance.params, vertex_instance.results)
+                self.route.register_vertex(vertex_name, vertex_instance.description, vertex_instance.params,
+                                           vertex_instance.results)
 
         for item in self.routes:
             if item["source"] == "start" or item["target"] == "end": continue
@@ -137,7 +139,7 @@ class Network(Executable):
                 item["rule"] = "soft"
             self.route.register_contact(item["source"], item["target"],
                                         item["rule"])
-            
+
     def load_planner(self):
         system_prompt = f"### 角色 ###\n你是一个团队中专业的任务规划者，善于根据团队中成员的能力，将用户需求分解成子任务，按顺序分配给团队中的其他成员完成。\n\n"
         config = {
@@ -202,17 +204,18 @@ class Network(Executable):
             "prompt": system_prompt
         }
         network_planner_agent = AgentNetworkPlanner(self, config, self.logger)
-        network_planner_vertex = GroupVertex(self, network_planner_agent, network_planner_agent.params, network_planner_agent.results)
+        network_planner_vertex = GroupVertex(self, network_planner_agent, network_planner_agent.params,
+                                             network_planner_agent.results)
         self.add_vertex(network_planner_agent.id, network_planner_vertex)
-        self.route.register_vertex(network_planner_agent.id, 
-                                   network_planner_agent.description, 
-                                   network_planner_agent.params, 
+        self.route.register_vertex(network_planner_agent.id,
+                                   network_planner_agent.description,
+                                   network_planner_agent.params,
                                    network_planner_agent.results)
         for vertex_name, vertex in self.vertexes.items():
             if isinstance(vertex, GroupVertex) and vertex_name != network_planner_agent.id:
                 self.route.register_contact(network_planner_agent.id, vertex_name, "soft")
                 self.route.register_contact(vertex_name, network_planner_agent.id, "soft")
-                
+
     def load_summarizer(self):
         system_prompt = "### 角色 ###\n你是一个出色的任务报告撰写者，在任务完成之后，你能准确地对任务进行总结，回应用户的需求。\n\n### 目标 ###\n给定用户任务目标和任务完成后的所有上下文信息，你需要整理并总结任务结果，并将最终结果告诉用户。\n\n### 返回方式 ###\n请以 JSON 方式返回一个字典，包括以下两个字段：\n\nagent_network_summarize_reasoning: 整理和总结时的思考。\nagent_network_final_result：最终返回给用户的结果。\n\n### 返回示例 ###\n{\n    \"agent_network_summarize_reasoning\": \"...\",\n    \"agent_network_final_result\": \"...\"\n}\n"
         config = {
@@ -243,7 +246,8 @@ class Network(Executable):
             "prompt": system_prompt
         }
         network_summarizer_agent = AgentNetworkSummarizer(self, config, self.logger)
-        network_summarizer_vertex = GroupVertex(self, network_summarizer_agent, network_summarizer_agent.params, network_summarizer_agent.results)
+        network_summarizer_vertex = GroupVertex(self, network_summarizer_agent, network_summarizer_agent.params,
+                                                network_summarizer_agent.results)
         self.add_vertex(network_summarizer_agent.id, network_summarizer_vertex)
         self.route.register_vertex(network_summarizer_agent.id,
                                    network_summarizer_agent.description,
@@ -305,7 +309,8 @@ class Network(Executable):
                                     "completion_tokens"]
                                 self.usage_token_total_map["prompt_tokens"] += usage_token_total_map["prompt_tokens"]
                                 self.usage_token_total_map["total_tokens"] += usage_token_total_map["total_tokens"]
-                                self.usage_token_total_map["completion_cost"] += usage_token_total_map["completion_cost"]
+                                self.usage_token_total_map["completion_cost"] += usage_token_total_map[
+                                    "completion_cost"]
                                 self.usage_token_total_map["prompt_cost"] += usage_token_total_map["prompt_cost"]
                                 self.usage_token_total_map["total_cost"] += usage_token_total_map["total_cost"]
                                 self.total_time += total_time
@@ -313,9 +318,11 @@ class Network(Executable):
                                 self.agents_usages_token_history[agent_name] = agent_usages_token
                                 self.logger.log("Agent-Network-Graph",
                                                 f"AGENT: {agent_name} TOKEN TOTAL: {usage_token_total_map}", self.name)
-                                self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} TIME COST TOTAL: {total_time}",
+                                self.logger.log("Agent-Network-Graph",
+                                                f"AGENT: {agent_name} TIME COST TOTAL: {total_time}",
                                                 self.name)
-                                self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} has been removed", self.name)
+                                self.logger.log("Agent-Network-Graph", f"AGENT: {agent_name} has been removed",
+                                                self.name)
                                 self.remove_common(agent_name)
                                 removed_vertexes.append(agent_name)
                         else:
@@ -326,7 +333,8 @@ class Network(Executable):
                             for group_agent in vertex.executable.agents[agent_name]:
                                 if group_agent.end_timestamp == group_agent.begin_timestamp:
                                     group_agent.separate()
-                                agent_total_usage, agent_total_time = usage_calculate(agent_usages_token, agent_usages_time,
+                                agent_total_usage, agent_total_time = usage_calculate(agent_usages_token,
+                                                                                      agent_usages_time,
                                                                                       group_agent.begin_timestamp,
                                                                                       group_agent.end_timestamp)
                                 total_usage['completion_tokens'] += agent_total_usage['completion_tokens']
@@ -391,7 +399,8 @@ class Network(Executable):
             source_wo_group = source.split('/')[1]
         else:
             source_wo_group = source
-        if source_wo_group != group.id and source_wo_group != "start" and source_wo_group not in group.agents.keys() or (source_wo_group == group.id and target != group.start_agent):
+        if source_wo_group != group.id and source_wo_group != "start" and source_wo_group not in group.agents.keys() or (
+                source_wo_group == group.id and target != group.start_agent):
             raise Exception(
                 f"group: {group.id}, link: source-{source}-target-{target} illegal.")
         self.routes.append({
@@ -432,6 +441,13 @@ class Network(Executable):
         for vertex in vertexes:
             if not self.vertex_exists(vertex.id):
                 self.add_vertex(vertex.id, vertex)
+                self.route.register_vertex(vertex.id,
+                                           vertex.description,
+                                           vertex.params,
+                                           vertex.results)
+                self.logger.log("Agent-Network-Graph",
+                                f"VERTEX: {vertex.id} TYPE: ThirdPartyNode has been added from the refresh",
+                                self.name)
             else:
                 third_party_exist_vertexes.remove(third_party_vertex_key_prefix + '&&' + vertex.id)
         for third_party_exist_vertex in third_party_exist_vertexes:
@@ -444,6 +460,7 @@ class Network(Executable):
                 del self.third_party_vertexes[third_party_vertex]
                 # self.remove_common(third_party_vertex.split('&&')[2])
                 del self.vertexes[third_party_vertex.split('&&')[2]]
+                self.route.deregister_vertex(third_party_vertex.split('&&')[2])
                 self.num_vertexes -= 1
                 self.logger.log("Agent-Network-Graph",
                                 f"VERTEX: {third_party_vertex} TYPE: ThirdPartyNode has been removed from the graph",
@@ -455,6 +472,7 @@ class Network(Executable):
             del self.third_party_vertexes[third_party_vertex_key]
             # self.remove_common(name)
             del self.vertexes[name]
+            self.route.deregister_vertex(name)
             self.num_vertexes -= 1
             self.logger.log("Agent-Network-Graph",
                             f"VERTEX: {third_party_vertex_key} TYPE: ThirdPartyNode has been removed from the graph",
