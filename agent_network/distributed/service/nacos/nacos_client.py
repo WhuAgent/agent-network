@@ -88,7 +88,7 @@ class NacosClient(Client):
         return res.status_code == 200
 
     def search_services(self, service_group):
-        url = f"{self.center_addr}/nacos/v2/ns/service/list?groupName={service_group}"
+        url = f"{self.center_addr}/nacos/v2/ns/service/list?groupName={service_group}&&pageSize=500"
         res = requests.get(url)
         # if
         return res.json()['data']
@@ -182,7 +182,7 @@ class NacosClient(Client):
         #     data_id=service,
         #     group=self.service_group
         # ))), service)
-        return self.loads_config(self.nacos_client.get_config(service, self.service_group), service)
+        return self.loads_config(self.nacos_client.get_config(service, self.service_group, no_snapshot=True), service)
 
     def loads_config(self, content, service):
         if content is None:
