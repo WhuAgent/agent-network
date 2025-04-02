@@ -393,6 +393,13 @@ class Network(Executable):
     def get_vertexes(self) -> list[Executable]:
         return list(self.vertexes.keys())
 
+
+    def get_all_vertexes_description(self):
+        return {
+            vertex.name: vertex.description
+            for vertex in self.vertexes.values()
+        }
+    
     def vertex_exists(self, name):
         return name in self.vertexes
 
