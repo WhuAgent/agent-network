@@ -30,7 +30,8 @@ class TaskVertex:
         self.token = token
         self.token_cost = token_cost
         self.time_cost = time_cost
-        self.type = type if type is not None else get_task_type(executable)
+        if executable:
+            self.type = type if type is not None else get_task_type(executable)
         
         self.prev = prev
         self.next = next
