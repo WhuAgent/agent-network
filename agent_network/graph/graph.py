@@ -280,7 +280,11 @@ class Graph:
 
             route = network.route
 
-            next_tasks = next_tasks or route.search(task_vertex, self.task_manager)
+            next_tasks = next_tasks or route.search(task_vertex,
+                                                    self.task_manager,
+                                                    repr(self.trace),
+                                                    ctx.retrieve("task"),
+                                                    network.get_all_vertexes_description())
             next_tasks_list = {}
             for next_task in next_tasks:
                 if "id" not in next_task:
@@ -422,10 +426,10 @@ class Graph:
                         ctx.register("step", ctx.retrieve("step") + 1)
 
                     # 搜索下一组任务
-                    next_tasks = next_tasks or route.search(task, 
-                                                            self.task_manager, 
-                                                            repr(self.trace), 
-                                                            ctx.retrieve("task"), 
+                    next_tasks = next_tasks or route.search(task,
+                                                            self.task_manager,
+                                                            repr(self.trace),
+                                                            ctx.retrieve("task"),
                                                             network.get_all_vertexes_description())
                     next_tasks_list = {}
                     for next_task in next_tasks:
