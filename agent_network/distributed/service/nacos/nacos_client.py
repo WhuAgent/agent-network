@@ -34,6 +34,7 @@ class NacosClient(Client):
         #     secret_key=self.secret_key,
         # ))
         self.nacos_client = nacos.NacosClient(self.center_addr)
+        self.nacos_client.set_options(cache_dir=None)
 
     async def register(self, vertexes):
         metadata = self.get_metadata(vertexes)
