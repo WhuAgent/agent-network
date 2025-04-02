@@ -153,6 +153,10 @@ model_cost = {
         "prompt_token": 0.0016,
         "completion_token": 0.004,
         "stream": True
+    },
+    "qwen-long": {
+        "prompt_token": 0.0005,
+        "completion_token": 0.002
     }
 }
 
