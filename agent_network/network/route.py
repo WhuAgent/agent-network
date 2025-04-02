@@ -185,7 +185,7 @@ class Route(Communicate):
                         {
                             "id": id,
                             "task": task_manager.get_task(id).get_task(),
-                            "executor": task_manager.get_task(id).executable.name if hasattr(task_manager.get_task(id).executable, "name") else task_manager.get_task(id).executable.id
+                            "executor": task_manager.get_task(id).executable.name if hasattr(task_manager.get_task(id).executable, "name") and task_manager.get_task(id).executable.name is not None else task_manager.get_task(id).executable.id
                         }
                     })
                 except:
