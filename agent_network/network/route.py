@@ -181,15 +181,18 @@ class Route(Communicate):
             next_tasks = []
             for id in cur_task.next:
                 try:
-                    next_tasks.append({
+                    next_tasks.append(
                         {
                             "id": id,
                             "task": task_manager.get_task(id).get_task(),
-                            "executor": task_manager.get_task(id).executable.name if hasattr(task_manager.get_task(id).executable, "name") and task_manager.get_task(id).executable.name is not None else task_manager.get_task(id).executable.id
+                            "executor": task_manager.get_task(id).executable.name if hasattr(
+                                task_manager.get_task(id).executable, "name") and task_manager.get_task(
+                                id).executable.name is not None else task_manager.get_task(id).executable.id
                         }
-                    })
-                except:
-                    print(f"error subtask's executor: {task_manager.get_task(id).executable.id} with task id: {id}")
+                    )
+                except Exception as e:
+                    print(
+                        f"error: {e} subtask's executor: {task_manager.get_task(id).executable.id} with task id: {id}")
 
         # 基于软路由的规划
         next_tasks = self.plan_based_soft_route(executor, vertexes_description, user_task, history_task_info,
