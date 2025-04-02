@@ -1,18 +1,19 @@
 from agent_network.network.executable import Executable
 from agent_network.utils.task import get_task_type
 from agent_network.task.task_call import TaskStatus
+from agent_network.exceptions import debug_function
 
 
 class TaskVertex:
-    def __init__(self, 
-                 executable: Executable = None, 
-                 task=None, 
-                 id=None, 
-                 status=TaskStatus.NEW.value, 
+    def __init__(self,
+                 executable: Executable = None,
+                 task=None,
+                 id=None,
+                 status=TaskStatus.NEW.value,
                  token=0,
                  token_cost=0,
                  time_cost=0,
-                 type=None, 
+                 type=None,
                  prev=[],
                  next=[]):
         self.task = task
@@ -21,18 +22,19 @@ class TaskVertex:
             self.id = id if id else self.executable.name
             self.name = self.executable.name
         except:
+            debug_function()
             try:
                 print(f"{self.executable.id}")
             except:
                 print(f"{self.executable} id not exist")
-                pass
+                debug_function()
         self.status = status
         self.token = token
         self.token_cost = token_cost
         self.time_cost = time_cost
         if executable:
             self.type = type if type is not None else get_task_type(executable)
-        
+
         self.prev = prev
         self.next = next
 
@@ -56,16 +58,16 @@ class TaskVertex:
 
     def get_type(self):
         return self.type
-    
+
     def get_prev(self):
         return self.prev
-    
+
     def get_next(self):
         return self.next
-    
+
     def add_next(self, task_id):
         if task_id not in self.next:
             self.next.append(task_id)
-    
+
     def __repr__(self):
         return f"{self.executable}: {self.task}"
