@@ -29,6 +29,7 @@ class BaseAgent(Executable):
 
         self.params = self.config.get("params")
         self.results = self.config.get("results")
+        self.type = self.config.get("type")
 
         self.model = self.config.get("model")
         self.prompts = self.config.get("prompts")
@@ -187,6 +188,7 @@ class BaseAgentGroup(Executable):
 
         self.params = self.config.get("params")
         self.results = self.config.get("results")
+        self.type = self.config.get("type")
 
         self.agents: Dict[str, List[GroupAgent]] = {}
         self.start_agent = self.config.get("start_agent")

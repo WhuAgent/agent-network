@@ -6,8 +6,7 @@ def get_task_type(vertex: Vertex):
     if isinstance(vertex, AgentVertex) or isinstance(vertex, ThirdPartyAgentVertex):
         type = "agent"
     elif isinstance(vertex, GroupVertex) or isinstance(vertex, ThirdPartyGroupVertex):
-        type = "group"
+        type = "group" if vertex.type == "agent" else vertex.type
     else:
-        # todo 如何判断tbot类型
-        type = "tbot"
+        raise Exception(f"task type error: {vertex.name}")
     return type

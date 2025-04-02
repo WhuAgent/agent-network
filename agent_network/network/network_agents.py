@@ -9,11 +9,7 @@ class AgentNetworkPlanner(BaseAgent):
 
     def forward(self, messages, **kwargs):
         task = kwargs.get("task")
-        # sub_tasks = kwargs.get("sub_tasks")
-        # task_queue = kwargs.get("task_queue")
-        # next_task_id = kwargs.get("next_task_id")
-        # cur_task_id = task_queue[0]
-        
+
         prompt = f"现在用户的需求是：{task}"
 
         self.add_message("user", prompt, messages)
@@ -50,27 +46,6 @@ class AgentNetworkPlanner(BaseAgent):
 
         if sub_tasks is None:
             raise Exception("Planner's subTasks are None.")
-        # for i in range(len(sub_tasks)):
-        #     if i == len(sub_tasks) - 1:
-        #         sub_tasks[i]["next"] = [-1]
-        #     else:
-        #         sub_tasks[i]["next"] = [i + 1]
-
-        
-        # new_sub_tasks = response.content
-        
-        # if isinstance(new_sub_tasks, dict):
-        #     new_sub_tasks = new_sub_tasks.get("tasks") or new_sub_tasks.get("subtasks")
-            
-        # sub_tasks[cur_task_id]["next"] = [next_task_id]
-        # for sub_task in new_sub_tasks:
-        #     sub_tasks[next_task_id] = {
-        #         "task": sub_task["task"],
-        #         "executor": sub_task["executor"],
-        #         "next": [next_task_id + 1]
-        #     }
-        #     next_task_id += 1
-        # sub_tasks[next_task_id - 1]["next"] = []
         results = {
             "sub_tasks": sub_tasks
         }

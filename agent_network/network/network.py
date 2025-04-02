@@ -145,6 +145,7 @@ class Network(Executable):
         config = {
             "id": "AgentNetworkPlannerGroup/AgentNetworkPlanner",
             "description": "网络规划智能体",
+            "type": "agent",
             "title": "AgentNetworkPlanner",
             "keywords": ["network", "planner"],
             "manual": "http://wechat.com/xxxx.html",
@@ -222,6 +223,7 @@ class Network(Executable):
             "id": "AgentNetworkSummarizerGroup/AgentNetworkSummarizer",
             "description": "任务结果总结智能体",
             "title": "AgentNetworkSummarizer",
+            "type": "agent",
             "keywords": ["network", "summarizer"],
             "manual": "http://wechat.com/xxxx.html",
             "model": "deepseek-chat",
