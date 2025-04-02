@@ -451,7 +451,16 @@ class Network(Executable):
                                 f"VERTEX: {vertex.id} TYPE: ThirdPartyNode has been added from the refresh",
                                 self.name)
             else:
-                third_party_exist_vertexes.remove(third_party_vertex_key_prefix + '&&' + vertex.id)
+                remove_key = third_party_vertex_key_prefix + '&&' + vertex.id
+                if remove_key in third_party_exist_vertexes:
+                    third_party_exist_vertexes.remove(remove_key)
+                    self.logger.log("Agent-Network-Graph",
+                                    f"VERTEX: {vertex.id} TYPE: ThirdPartyNode has been removed from the refresh",
+                                    self.name)
+                else:
+                    self.logger.log("Agent-Network-Graph",
+                                    f"ERROR VERTEX: {vertex.id} TYPE: removing from the refresh: {remove_key}",
+                                    self.name)
         for third_party_exist_vertex in third_party_exist_vertexes:
             self.remove_third_party_vertex(service_name, service_group, third_party_exist_vertex.split('&&')[2])
 
