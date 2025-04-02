@@ -189,7 +189,7 @@ class Route(Communicate):
                         }
                     })
                 except:
-                    print(f"error subtask's executor: {task_manager.get_task(id).executable} with task id: {id}")
+                    print(f"error subtask's executor: {task_manager.get_task(id).executable.id} with task id: {id}")
 
         # 基于软路由的规划
         next_tasks = self.plan_based_soft_route(executor, vertexes_description, user_task, history_task_info,
