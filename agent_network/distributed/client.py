@@ -57,7 +57,8 @@ class Client:
                                                           vertex_config.description,
                                                           vertex_config.service_group,
                                                           vertex_config.service_name, vertex_config.ip,
-                                                          vertex_config.port
+                                                          vertex_config.port,
+                                                          vertex_config.type,
                                                       ),
                                                       vertex_config.params,
                                                       vertex_config.results) if vertex_config.name == vertex_config.service_name else
@@ -68,7 +69,8 @@ class Client:
                                                           vertex_config.description,
                                                           vertex_config.service_group,
                                                           vertex_config.service_name, vertex_config.ip,
-                                                          vertex_config.port
+                                                          vertex_config.port,
+                                                          vertex_config.type,
                                                       ),
                                                       vertex_config.params, vertex_config.results)
                                 for vertex_config in vertexes_configs]
@@ -103,16 +105,27 @@ class Client:
         update_all_thread.start()
 
     def get_metadata(self, vertexes):
-        metadata = [
-            {
-                "name": vertex.name,
-                "description": vertex.description,
-                "title": vertex.title,
-                "params": vertex.params,
-                "results": vertex.results,
-                "ip": self.ip,
-                "port": self.port
-            }
-            for vertex in vertexes if isinstance(vertex, AgentVertex) or isinstance(vertex, GroupVertex)
-        ]
+        metadata = []
+        for vertex in vertexes:
+            if isinstance(vertex, AgentVertex):
+                metadata.append({
+                    "name": vertex.name,
+                    "description": vertex.description,
+                    "title": vertex.title,
+                    "params": vertex.params,
+                    "results": vertex.results,
+                    "ip": self.ip,
+                    "port": self.port
+                })
+            elif isinstance(vertex, GroupVertex):
+                metadata.append({
+                    "name": vertex.name,
+                    "description": vertex.description,
+                    "title": vertex.title,
+                    "params": vertex.params,
+                    "results": vertex.results,
+                    "ip": self.ip,
+                    "port": self.port,
+                    "type": vertex.type
+                })
         return json.dumps(metadata)

@@ -3,7 +3,7 @@ import requests
 
 
 class ThirdPartyExecutable(Executable):
-    def __init__(self, id, title, description, service_group, service_name, ip, port):
+    def __init__(self, id, title, description, service_group, service_name, ip, port, type="agent"):
         super().__init__(id, description)
         self.name = id
         self.service_group = service_group
@@ -11,6 +11,7 @@ class ThirdPartyExecutable(Executable):
         self.title = title
         self.ip = ip
         self.port = port
+        self.type = type
 
     def execute(self, input_content, **kwargs):
         params = {"task": kwargs["task"] if "task" in kwargs else None, "vertex": self.id}

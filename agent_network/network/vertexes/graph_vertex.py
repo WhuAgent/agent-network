@@ -9,6 +9,7 @@ class GroupVertex(FirstPartyVertex):
         self.title = executable.title
         self.name = executable.name
         self.description = executable.description
+        self.type = executable.type
 
 
 class AgentVertex(FirstPartyVertex):
@@ -26,6 +27,7 @@ class ThirdPartyGroupVertex(ThirdPartyVertex):
         self.title = executable.title
         self.name = executable.name
         self.description = executable.description
+        self.type = executable.type
 
 
 class ThirdPartyAgentVertex(ThirdPartyVertex):

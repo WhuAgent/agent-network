@@ -191,7 +191,8 @@ class NacosClient(Client):
         for vertex_config in vertex_configs_list:
             nc = VertexConfig(vertex_config["name"], vertex_config["title"], vertex_config["description"],
                               vertex_config["params"], vertex_config["results"],
-                              vertex_config["ip"], vertex_config["port"])
+                              vertex_config["ip"], vertex_config["port"],
+                              vertex_config["type"] if "type" in vertex_config else "agent")
             nc.service_name = service
             nc.service_group = self.service_group
             vertex_configs.append(nc)

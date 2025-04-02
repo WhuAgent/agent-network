@@ -21,22 +21,22 @@ class Route(Communicate):
         return name in self.vertex_description
 
     def register_vertex(self, name, description, params, results):
-        assert name not in self.vertex_description, f"{name} already exists!"
-
-        self.vertex_description[name] = description
-        self.vertex_params[name] = params
-        self.vertex_results[name] = results
-        self.contact_list[name] = {}
+        if name not in self.vertex_description:
+            self.vertex_description[name] = description
+            self.vertex_params[name] = params
+            self.vertex_results[name] = results
+            self.contact_list[name] = {}
 
     def deregister_vertex(self, name):
-        assert name in self.vertex_description, f"{name} does not exist!"
-        # TODO 上锁
-        del self.contact_list[name]
-        for source in list(self.contact_list.keys()):
-            for target in list(self.contact_list[source].keys()):
-                if target == name:
-                    del self.contact_list[source][name]
-        del self.vertex_description[name]
+        if name in self.vertex_description:
+            del self.contact_list[name]
+            for source in list(self.contact_list.keys()):
+                for target in list(self.contact_list[source].keys()):
+                    if target == name:
+                        del self.contact_list[source][name]
+            del self.vertex_description[name]
+            del self.vertex_params[name]
+            del self.vertex_results[name]
 
     def register_contact(self, source, target, rule):
         assert source in self.vertex_description, f"{source} does not exist!"
@@ -65,7 +65,7 @@ class Route(Communicate):
 
     def forward_message(self, source, next_task):
         target = next_task.get("executor")
-        
+
         if len(self.contact_list[source]) == 0 or target == "COMPLETE":
             return "COMPLETE"
 
@@ -98,7 +98,7 @@ class Route(Communicate):
     #     if len(related_context) != len(self.vertex_params[target]):
     #         matched_context = self._match_context(valuable_context, target)
     #         ctx.registers(matched_context)
-            
+
     def match_context(self, target):
         current_context = ctx.retrieves_all()
         ignored_context = ["$$$$$Graph$$$$$", "$$$$$GraphID$$$$$", "sub_tasks", "step"]
@@ -106,12 +106,11 @@ class Route(Communicate):
         for key, value in current_context.items():
             if key not in ignored_context:
                 valuable_context[key] = value
-                
+
         related_context = self.get_related_context(target, valuable_context)
         if len(related_context) != len(self.vertex_params[target]):
             matched_context = self._match_context(valuable_context, target)
             ctx.registers(matched_context)
-
 
     def get_related_context(self, target, current_context):
         related_context = {}
@@ -135,22 +134,12 @@ class Route(Communicate):
 
     def search(self, cur_task: TaskVertex, task_manager: TaskManager):
         next_tasks = None
-        
+
         task = cur_task.get_task()
         executor = cur_task.executable.name
 
         # if self.all_results_generated(ctx.retrieves_all(), final_results):
         #     targets = ["COMPLETE"]
-        
-        # 按照 task_manager 走下一个 task
-        if not next_tasks:
-            next_tasks = [
-                {
-                    "id": id,
-                    "task": task_manager.get_task(id).get_task(),
-                    "executor": task_manager.get_task(id).executable.name
-                } for id in cur_task.next
-            ]
 
         # 寻找硬路由
         if not next_tasks:
@@ -162,22 +151,16 @@ class Route(Communicate):
                         "executor": target,
                     } for target in targets
                 ]
-            
-        
 
-        # if not targets and executor in self.contact_list:
-        #     targets_map = self.contact_list[executor]
-        #     target_avaliable = targets_map.keys()
-        #     current_step = ctx.retrieve("step")
-        #     sub_tasks = ctx.retrieve("sub_tasks")
-        #     if current_step is not None and sub_tasks is not None:
-        #         targets = [0] if current_step == -1 else sub_tasks[current_step]["next"]
-        #         for i, target in enumerate(targets):
-        #             targets[i] = sub_tasks[target].get("executor") if target != -1 else "COMPLETE"
-
-        #         for target in targets:
-        #             if target != "COMPLETE" and target not in target_avaliable:
-        #                 self.register_contact(source, target, "soft")
+        # 按照 task_manager 走下一个 task
+        if not next_tasks:
+            next_tasks = [
+                {
+                    "id": id,
+                    "task": task_manager.get_task(id).get_task(),
+                    "executor": task_manager.get_task(id).executable.name
+                } for id in cur_task.next
+            ]
         return next_tasks if next_tasks is not None else []
 
     def all_results_generated(self, current_context, final_results):
