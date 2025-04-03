@@ -58,7 +58,7 @@ class BaseAgent(Executable):
             return SystemMessage(self.config["prompt"])
         else:
             return None
-            
+
     def get_system_message(self):
         return self.system_message
 
@@ -71,7 +71,7 @@ class BaseAgent(Executable):
             messages.append(AssistantMessage(content))
         else:
             raise Exception("unknown message type")
-    
+
     def add_message(self, role, content, messages=None):
         if messages is None:
             messages = []
@@ -110,7 +110,7 @@ class BaseAgent(Executable):
         time_cost = end_t - begin_t
         self.time_costs.append(UsageTime(begin_t, time_cost))
         return results, next_tasks
-    
+
     def chat_llm(self, messages, json_response=False, **kwargs):
         # todo 该时间不精准，应该取execute的开始时间
         time_chat_begin = datetime.now().timestamp()
@@ -121,7 +121,7 @@ class BaseAgent(Executable):
         #                    'total_tokens': usage.total_tokens, 'total_cost': usage.total_cost,
         #                    'completion_cost': usage.completion_cost, 'prompt_cost': usage.prompt_cost}
         # self.usages.append(UsageToken(time_chat_begin, usage_token_map))
-        
+
         ctx.register_llm_action(messages)
         self.log("network", f"STEP TOKEN NUM: {assistant_message.token_num} COST: {assistant_message.token_cost}")
         # if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
@@ -139,7 +139,7 @@ class BaseAgent(Executable):
     #                        'total_tokens': assistant_message.token_num, 'total_cost': assistant_message.token_cost,
     #                        'completion_cost': assistant_message.completion_token_cost, 'prompt_cost': assistant_message.prompt_token_cost}
     #     self.usages.append(UsageToken(time_chat_begin, usage_token_map))
-        
+
     #     ctx.register_llm_action(messages)
     #     self.log("network", f"STEP TOKEN NUM: {assistant_message.token_num} COST: {assistant_message.token_cost}")
     #     if len(self.history_action) > 0 and len(self.history_action) >= self.keep_history_num:
@@ -240,7 +240,7 @@ class BaseAgentGroup(Executable):
         results = {
             "next_tasks": [
                 {
-                    "task": kwargs.get("task"),
+                    "task": ctx.retrieve("task"),
                     "executor": self.start_agent
                 }
             ]
@@ -256,6 +256,7 @@ class BaseAgentGroup(Executable):
         else:
             next_tasks = None
         return results, next_tasks
+
     def add_agent(self, name):
         assert name not in list(self.current_agents_name), f"agent {name} already exist in group {self.id}"
         self.agents.setdefault(name, [])
