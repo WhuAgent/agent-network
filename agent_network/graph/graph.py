@@ -10,6 +10,7 @@ from agent_network.graph.trace import Trace
 from agent_network.task.manager import TaskManager
 from agent_network.task.task_call import Parameter, TaskStatus
 from agent_network.network.vertexes.third_party.executable import ThirdPartySchedulerExecutable
+from agent_network.network.vertexes.graph_vertex import AgentVertex
 from agent_network.utils.llm.message import Message
 from agent_network.utils.logger import Logger
 
@@ -254,6 +255,8 @@ class Graph:
             # 更新 task_vertex 状态（开始运行）
             task_vertex.set_status(TaskStatus.RUNNING.value)
 
+            network.route.match_context(task_vertex.name)
+
             cur_execution_result, next_tasks = network.execute(task_vertex.name, messages)
 
             sub_tasks = cur_execution_result.get("sub_tasks")
@@ -397,7 +400,9 @@ class Graph:
                     task.set_status(TaskStatus.RUNNING.value)
 
                     # 如果是 subtask 列表中的新任务进来，需要能够根据之前执行完的subtasks构成的完整的执行图中恢复的上下文，自动填充当前subtask的executor需要的参数
-                    route.match_context(task.executable.name)
+                    if task.executable and isinstance(task.executable, AgentVertex):
+                        route.match_context(task.executable.name)
+
                     cur_execution_result, next_tasks = network.execute(task.executable.name, messages)
 
                     if task.executable.name == "AgentNetworkPlannerGroup/AgentNetworkPlanner":

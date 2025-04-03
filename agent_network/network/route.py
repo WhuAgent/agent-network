@@ -106,10 +106,10 @@ class Route(Communicate):
     def match_context(self, target):
         valuable_context = self.get_valuable_context()
 
-        related_context = self.get_related_context(target, valuable_context)
-        if len(related_context) != len(self.vertex_params[target]):
-            matched_context = self._match_context(valuable_context, target)
-            ctx.registers(matched_context)
+        # related_context = self.get_related_context(target, valuable_context)
+        # if len(related_context) != len(self.vertex_params[target]):
+        matched_context = self._match_context(valuable_context, target)
+        ctx.registers(matched_context)
 
     def get_valuable_context(self, ignored_context=[]):
         current_context = ctx.retrieves_all()
@@ -138,7 +138,7 @@ class Route(Communicate):
                 f"现在，上下文中的信息如下：\n{context}\n\n而下游服务所需要的参数为：\n{self.vertex_params[target]}\n\n请为上下文增添新的参数，以让下游服务正确获取到其所需信息。")
         ]
 
-        response = chat_llm_json(messages)
+        response = chat_llm_json(messages, model="qwen-max")
 
         return response.content
 
