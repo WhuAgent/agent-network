@@ -90,7 +90,8 @@ class Graph:
             for level_span_vertex, span_detail in level_detail["level_spans"].items():
                 span_params = span_detail["params"]
                 for span_param in span_params:
-                    ctx.register(span_param["name"], span_param["value"])
+                    if "value" in span_param:
+                        ctx.register(span_param["name"], span_param["value"])
                 span_results = span_detail["results"]
                 for span_result in span_results:
                     if "value" in span_result:
@@ -170,7 +171,8 @@ class Graph:
             for level_span_vertex, span_detail in level_detail["level_spans"].items():
                 span_params = span_detail["params"]
                 for span_param in span_params:
-                    ctx.register(span_param["name"], span_param["value"])
+                    if "value" in span_param:
+                        ctx.register(span_param["name"], span_param["value"])
                 span_results = span_detail["results"]
                 for span_result in span_results:
                     if "value" in span_result:
