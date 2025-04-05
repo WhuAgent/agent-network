@@ -272,7 +272,7 @@ class Graph:
                 if i != 1:
                     self.task_manager.task_queue[i].prev = [i - 1]
 
-            self.trace.set_subtasks(sub_task, 0)
+            self.trace.set_subtasks(sub_tasks, 0)
 
             self.cur_execution.llm_messages = messages[len_message:]
             self.cur_execution.next_executors = next_tasks
