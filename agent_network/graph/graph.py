@@ -13,6 +13,7 @@ from agent_network.network.vertexes.third_party.executable import ThirdPartySche
 from agent_network.network.vertexes.graph_vertex import AgentVertex
 from agent_network.utils.llm.message import Message
 from agent_network.utils.logger import Logger
+from agent_network.utils.task import get_task_type
 
 
 class Graph:
@@ -261,7 +262,9 @@ class Graph:
 
             sub_tasks = cur_execution_result.get("sub_tasks")
             for sub_task in sub_tasks:
-                self.task_manager.add_task(sub_task["task"], network.get_vertex(sub_task["executor"]))
+                sub_task_vertex = network.get_vertex(sub_task["executor"])
+                sub_task["type"] = get_task_type(sub_task_vertex)
+                self.task_manager.add_task(sub_task["task"], sub_task_vertex)
 
             for i in range(1, self.task_manager.task_cnt + 1):
                 if i != self.task_manager.task_cnt:
@@ -269,7 +272,7 @@ class Graph:
                 if i != 1:
                     self.task_manager.task_queue[i].prev = [i - 1]
 
-            self.trace.set_subtasks(ctx.retrieve("sub_tasks"), 0)
+            self.trace.set_subtasks(sub_task, 0)
 
             self.cur_execution.llm_messages = messages[len_message:]
             self.cur_execution.next_executors = next_tasks
