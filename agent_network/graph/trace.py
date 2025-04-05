@@ -35,7 +35,7 @@ class Trace:
         self.vertexes_count += len(vertexes)
         self.vertexes.extend(vertexes)
 
-    def add_spans(self, task_vertex: TaskVertex, next_task_vertexes: list[TaskVertex], messages):
+    def add_spans(self, network, task_vertex: TaskVertex, next_task_vertexes: list[TaskVertex], messages, need_match=False):
         vertex: Vertex = task_vertex.executable
         next_vertexes: list[Vertex] = [ntv.executable for ntv in next_task_vertexes]
         params_config = vertex.params
@@ -60,6 +60,8 @@ class Trace:
         for next_task_vertex in next_task_vertexes:
             next_vertex = next_task_vertex.executable
             type = get_task_type(next_vertex)
+            if need_match:
+                network.route.match_context(next_vertex.name)
             params = [Parameter(param_config["title"], param_config["name"], param_config["description"],
                                 ctx.retrieve(param_config["name"]), param_config["type"]).to_dict() for param_config in
                       next_vertex.params]

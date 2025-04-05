@@ -19,15 +19,12 @@ class TaskVertex:
         self.task = task
         self.executable = executable
         try:
-            self.id = id if id else self.executable.name
-            self.name = self.executable.name
+            if self.executable:
+                self.id = id if id else self.executable.name
+                self.name = self.executable.name
         except:
             debug_function()
-            try:
-                print(f"{self.executable.id}")
-            except:
-                print(f"{self.executable} id not exist")
-                debug_function()
+            print(f"{self.executable.id}")
         self.status = status
         self.token = token
         self.token_cost = token_cost

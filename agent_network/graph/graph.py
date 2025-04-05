@@ -104,7 +104,7 @@ class Graph:
                     recovery_message.token_num = message["token"]
                     recovery_message.token_cost = message["cost"]
                     recovery_messages.append(recovery_message)
-                self.trace.add_spans(TaskVertex(network.get_vertex(level_span_vertex), span_detail["task"], None,
+                self.trace.add_spans(network, TaskVertex(network.get_vertex(level_span_vertex), span_detail["task"], None,
                                                 span_detail["status"], span_detail["token"], span_detail["cost"],
                                                 span_detail["time"]),
                                      level_route_map[level_span_vertex], recovery_messages)
@@ -185,7 +185,7 @@ class Graph:
                     recovery_message.token_num = message["token"]
                     recovery_message.token_cost = message["cost"]
                     recovery_messages.append(recovery_message)
-                self.trace.add_spans(TaskVertex(network.get_vertex(level_span_vertex), span_detail["task"], None,
+                self.trace.add_spans(network, TaskVertex(network.get_vertex(level_span_vertex), span_detail["task"], None,
                                                 span_detail["status"], span_detail["token"], span_detail["cost"],
                                                 span_detail["time"]),
                                      level_route_map[level_span_vertex], recovery_messages)
@@ -257,8 +257,6 @@ class Graph:
             # 更新 task_vertex 状态（开始运行）
             task_vertex.set_status(TaskStatus.RUNNING.value)
 
-            network.route.match_context(task_vertex.name)
-
             cur_execution_result, next_tasks = network.execute(task_vertex.name, messages)
 
             sub_tasks = cur_execution_result.get("sub_tasks")
@@ -306,10 +304,9 @@ class Graph:
             if len(next_tasks_list) > 0:
                 self.task_manager.add_next_tasks(task_vertex, next_tasks_list.get("id"), next_tasks_list.get("task"),
                                                  next_tasks_list.get("executor"))
-            # ctx.register("task", sub_task_0)
             next_task_vertexes, next_third_party_task_vertexes = self.task_manager.get_next_execution_tasks()
             next_task_vertexes.extend(next_third_party_task_vertexes)
-            self.trace.add_spans(task_vertex, next_task_vertexes, messages)
+            self.trace.add_spans(network, task_vertex, next_task_vertexes, messages, need_match=True)
 
             self.task_manager.refresh()
 
@@ -457,7 +454,7 @@ class Graph:
 
                     next_task_vertexes, next_third_party_task_vertexes = self.task_manager.get_next_execution_tasks()
                     next_task_vertexes.extend(next_third_party_task_vertexes)
-                    self.trace.add_spans(task, next_task_vertexes, messages)
+                    self.trace.add_spans(network, task, next_task_vertexes, messages, need_match=True)
 
                     self.task_manager.refresh()
                 except Exception as e:
